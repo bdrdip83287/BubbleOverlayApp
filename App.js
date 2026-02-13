@@ -4,8 +4,8 @@ import { Text, View, StyleSheet } from "react-native";
 export default function App() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🚀 Hello from Termux React App!</Text>
-      <Text style={styles.subtitle}>Running directly without Acode 🎉</Text>
+      <Text style={styles.title}>🚀 Hello Dip sarkar !</Text>
+      <Text style={styles.subtitle}>Running  Acode 🎉</Text>
     </View>
   );
 }
