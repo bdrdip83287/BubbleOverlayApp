@@ -14,24 +14,24 @@ import {
     Keyboard,
     Alert,
     Modal,
+    Clipboard, 
     TouchableOpacity, 
     Platform,
     Share,
-    AppState,
-    I18nManager
+    AppState
 } from "react-native";
 import Slider from '@react-native-community/slider';
-import { Ionicons } from "@expo/vector-icons";
-import * as Clipboard from 'expo-clipboard';
+import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Crypto from 'expo-crypto';
-import * as Notifications from 'expo-notifications';
+import RNFS from 'react-native-fs';
+import SQLite from 'react-native-sqlite-storage';
 
-// ✅ FileSystem imports
-import * as FileSystem from 'expo-file-system/legacy';
+// Crypto for React Native
+import { sha256 } from 'react-native-sha256';
 
-// ✅ SQLite এর জন্য নতুন API
-import * as SQLite from 'expo-sqlite';
+// Notification imports
+import PushNotification from 'react-native-push-notification';
+import PushNotificationIOS from '@react-native-community/push-notification-ios';
 
 const { width, height } = Dimensions.get("window");
 const BUBBLE_SIZE = 50;
@@ -87,9 +87,7 @@ const STORAGE_KEYS = {
     BACKUP_INFO_SHOWN: '@floating_notes_backup_info_shown',
     LAST_BACKUP_TIME: '@floating_notes_last_backup_time',
     DATA_SOURCE: '@floating_notes_data_source',
-    SCROLL_SPEED: '@floating_notes_scroll_speed',
-    LANGUAGE: '@floating_notes_language', // নতুন ভাষা সেটিং
-    TEXT_DIRECTION: '@floating_notes_text_direction' // নতুন টেক্সট দিক সেটিং
+    SCROLL_SPEED: '@floating_notes_scroll_speed' // স্ক্রলিং গতি সংরক্ষণ
 };
 
 const SECURITY_QUESTIONS_LIST = [
@@ -101,195 +99,47 @@ const SECURITY_QUESTIONS_LIST = [
     "What is the name of your first school?"
 ];
 
-// ভাষা ট্রান্সলেশন
-const TRANSLATIONS = {
-    en: {
-        // Common
-        cancel: "Cancel",
-        save: "Save",
-        delete: "Delete",
-        edit: "Edit",
-        view: "View",
-        settings: "Settings",
-        close: "Close",
-        ok: "OK",
-        
-        // Notes
-        untitledNote: "Untitled Note",
-        noteList: "Note List",
-        newNote: "New Note",
-        deleteNote: "Delete Note",
-        lockNote: "Lock Note",
-        unlockNote: "Unlock Note",
-        confirmDelete: "Are you sure you want to delete this note?",
-        noteLocked: "Note Locked",
-        noteUnlocked: "Note Unlocked",
-        
-        // Settings
-        appSettings: "App Settings",
-        textSize: "Text Size",
-        opacity: "Opacity",
-        backgroundColor: "Background Color",
-        darkMode: "Dark Mode",
-        lightMode: "Light Mode",
-        quickLaunch: "Quick Launch Notification",
-        scrollSpeed: "Scroll Speed",
-        
-        // Security
-        setPassword: "Set Password",
-        changePassword: "Change Password",
-        enterPassword: "Enter Password",
-        oldPassword: "Old Password",
-        newPassword: "New Password",
-        confirmPassword: "Confirm Password",
-        passwordSetSuccess: "Password set successfully!",
-        passwordChangedSuccess: "Password changed successfully!",
-        
-        // Backup
-        backupEnabled: "Auto Backup Enabled",
-        backupInfo: "Your notes are automatically backed up to your device storage.",
-        
-        // Accessibility
-        doubleTapToEdit: "Double tap to edit note",
-        doubleTapToOpen: "Double tap to open note",
-        voiceOverHint: "Use swipe gestures to navigate",
-        
-        // Errors
-        passwordTooShort: "Password must be at least 3 characters long",
-        incorrectPassword: "Incorrect password",
-        somethingWentWrong: "Something went wrong",
+// Configure Push Notification
+PushNotification.configure({
+    onRegister: function(token) {
+        console.log('TOKEN:', token);
     },
-    ar: {
-        // Common
-        cancel: "إلغاء",
-        save: "حفظ",
-        delete: "حذف",
-        edit: "تعديل",
-        view: "عرض",
-        settings: "الإعدادات",
-        close: "إغلاق",
-        ok: "موافق",
-        
-        // Notes
-        untitledNote: "ملاحظة بدون عنوان",
-        noteList: "قائمة الملاحظات",
-        newNote: "ملاحظة جديدة",
-        deleteNote: "حذف الملاحظة",
-        lockNote: "قفل الملاحظة",
-        unlockNote: "فتح قفل الملاحظة",
-        confirmDelete: "هل أنت متأكد من رغبتك في حذف هذه الملاحظة؟",
-        noteLocked: "الملاحظة مقفلة",
-        noteUnlocked: "الملاحظة مفتوحة",
-        
-        // Settings
-        appSettings: "إعدادات التطبيق",
-        textSize: "حجم النص",
-        opacity: "الشفافية",
-        backgroundColor: "لون الخلفية",
-        darkMode: "الوضع الداكن",
-        lightMode: "الوضع الفاتح",
-        quickLaunch: "إشعار التشغيل السريع",
-        scrollSpeed: "سرعة التمرير",
-        
-        // Security
-        setPassword: "تعيين كلمة المرور",
-        changePassword: "تغيير كلمة المرور",
-        enterPassword: "أدخل كلمة المرور",
-        oldPassword: "كلمة المرور القديمة",
-        newPassword: "كلمة المرور الجديدة",
-        confirmPassword: "تأكيد كلمة المرور",
-        passwordSetSuccess: "تم تعيين كلمة المرور بنجاح!",
-        passwordChangedSuccess: "تم تغيير كلمة المرور بنجاح!",
-        
-        // Backup
-        backupEnabled: "تم تمكين النسخ الاحتياطي التلقائي",
-        backupInfo: "يتم حفظ ملاحظاتك تلقائيًا في تخزين جهازك.",
-        
-        // Accessibility
-        doubleTapToEdit: "اضغط مرتين لتعديل الملاحظة",
-        doubleTapToOpen: "اضغط مرتين لفتح الملاحظة",
-        voiceOverHint: "استخدم إيماءات السحب للتنقل",
-        
-        // Errors
-        passwordTooShort: "يجب أن تكون كلمة المرور 3 أحرف على الأقل",
-        incorrectPassword: "كلمة مرور غير صحيحة",
-        somethingWentWrong: "حدث خطأ ما",
+    onNotification: function(notification) {
+        console.log('NOTIFICATION:', notification);
+        notification.finish(PushNotificationIOS.FetchResult.NoData);
     },
-    he: {
-        // Common
-        cancel: "ביטול",
-        save: "שמור",
-        delete: "מחק",
-        edit: "ערוך",
-        view: "תצוגה",
-        settings: "הגדרות",
-        close: "סגור",
-        ok: "אישור",
-        
-        // Notes
-        untitledNote: "הערה ללא כותרת",
-        noteList: "רשימת הערות",
-        newNote: "הערה חדשה",
-        deleteNote: "מחק הערה",
-        lockNote: "נעל הערה",
-        unlockNote: "בטל נעילת הערה",
-        confirmDelete: "האם אתה בטוח שברצונך למחוק הערה זו?",
-        noteLocked: "הערה נעולה",
-        noteUnlocked: "הערה פתוחה",
-        
-        // Settings
-        appSettings: "הגדרות אפליקציה",
-        textSize: "גודל טקסט",
-        opacity: "שקיפות",
-        backgroundColor: "צבע רקע",
-        darkMode: "מצב כהה",
-        lightMode: "מצב בהיר",
-        quickLaunch: "התראה להפעלה מהירה",
-        scrollSpeed: "מהירות גלילה",
-        
-        // Security
-        setPassword: "הגדר סיסמה",
-        changePassword: "שנה סיסמה",
-        enterPassword: "הזן סיסמה",
-        oldPassword: "סיסמה ישנה",
-        newPassword: "סיסמה חדשה",
-        confirmPassword: "אשר סיסמה",
-        passwordSetSuccess: "הסיסמה הוגדרה בהצלחה!",
-        passwordChangedSuccess: "הסיסמה שונתה בהצלחה!",
-        
-        // Backup
-        backupEnabled: "גיבוי אוטומטי מופעל",
-        backupInfo: "ההערות שלך נשמרות אוטומטית לאחסון המכשיר שלך.",
-        
-        // Accessibility
-        doubleTapToEdit: "הקשה כפולה לעריכת ההערה",
-        doubleTapToOpen: "הקשה כפולה לפתיחת ההערה",
-        voiceOverHint: "השתמש במחוות החלקה לניווט",
-        
-        // Errors
-        passwordTooShort: "הסיסמה חייבת להיות לפחות 3 תווים",
-        incorrectPassword: "סיסמה לא נכונה",
-        somethingWentWrong: "משהו השתבש",
-    }
-};
+    onAction: function(notification) {
+        console.log('ACTION:', notification.action);
+        console.log('NOTIFICATION:', notification);
+    },
+    onRegistrationError: function(err) {
+        console.error(err.message, err);
+    },
+    permissions: {
+        alert: true,
+        badge: true,
+        sound: true,
+    },
+    popInitialNotification: true,
+    requestPermissions: Platform.OS === 'ios',
+});
+
+// SQLite setup
+SQLite.enablePromise(true);
 
 // এনক্রিপশন ইউটিলিটি ফাংশনস
 const generateEncryptionKey = async () => {
-    const key = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        Date.now().toString() + Math.random().toString()
-    );
-    return key;
+    const timestamp = Date.now().toString();
+    const random = Math.random().toString();
+    const hash = await sha256(timestamp + random);
+    return hash;
 };
 
 const encryptData = async (data, key) => {
     try {
         const dataString = JSON.stringify(data);
-        const encrypted = await Crypto.digestStringAsync(
-            Crypto.CryptoDigestAlgorithm.SHA256,
-            dataString + key
-        );
-        return encrypted;
+        const hash = await sha256(dataString + key);
+        return hash;
     } catch (error) {
         return null;
     }
@@ -312,30 +162,21 @@ const createNewNote = (lastX, lastY) => ({
     lastScrollY: 0, 
 });
 
-// নোটিফিকেশন কনফিগারেশন
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: false,
-        shouldSetBadge: false,
-    }),
-});
-
 // ব্যাকআপ ডিরেক্টরি পাথ
-const BACKUP_DIRECTORY = FileSystem.documentDirectory + 'floating_notes_backup/';
+const BACKUP_DIRECTORY = RNFS.DocumentDirectoryPath + '/floating_notes_backup/';
 const BACKUP_JSON_FILE = BACKUP_DIRECTORY + 'notes_backup.json';
 const BACKUP_SETTINGS_FILE = BACKUP_DIRECTORY + 'settings_backup.json';
 
 // ✅ উন্নত ব্যাকআপ সিস্টেম ফাংশনস
 const createBackupDirectory = async () => {
     try {
-        const backupDirInfo = await FileSystem.getInfoAsync(BACKUP_DIRECTORY);
-        if (!backupDirInfo.exists) {
-            await FileSystem.makeDirectoryAsync(BACKUP_DIRECTORY, { intermediates: true });
+        const backupDirExists = await RNFS.exists(BACKUP_DIRECTORY);
+        if (!backupDirExists) {
+            await RNFS.mkdir(BACKUP_DIRECTORY);
         }
     } catch (error) {
         try {
-            await FileSystem.makeDirectoryAsync(BACKUP_DIRECTORY, { intermediates: true });
+            await RNFS.mkdir(BACKUP_DIRECTORY);
         } catch (retryError) {
         }
     }
@@ -378,9 +219,7 @@ const saveNotesToJSONFile = async (notes) => {
         
         const backupJson = JSON.stringify(backupData);
         
-        await FileSystem.writeAsStringAsync(BACKUP_JSON_FILE, backupJson, {
-            encoding: FileSystem.EncodingType.UTF8
-        });
+        await RNFS.writeFile(BACKUP_JSON_FILE, backupJson, 'utf8');
         
         await AsyncStorage.setItem(STORAGE_KEYS.LAST_BACKUP_TIME, Date.now().toString());
         return true;
@@ -394,11 +233,14 @@ let db = null;
 const initDatabase = async () => {
     try {
         if (!db) {
-            db = await SQLite.openDatabaseAsync('notes_backup.db');
+            db = await SQLite.openDatabase({
+                name: 'notes_backup.db',
+                location: 'default'
+            });
         }
         
         // টেবিল তৈরি
-        await db.execAsync(`
+        await db.executeSql(`
             CREATE TABLE IF NOT EXISTS notes_backup (
                 id TEXT PRIMARY KEY,
                 title TEXT,
@@ -416,7 +258,9 @@ const initDatabase = async () => {
                 lastScrollY INTEGER,
                 created_at INTEGER
             );
-            
+        `);
+        
+        await db.executeSql(`
             CREATE TABLE IF NOT EXISTS backup_info (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 backup_time INTEGER,
@@ -437,15 +281,15 @@ const saveNotesToDatabase = async (notes) => {
         const database = await initDatabase();
         if (!database) return false;
         
-        await database.execAsync('BEGIN TRANSACTION');
+        await database.executeSql('BEGIN TRANSACTION;');
         
         try {
             // আগের ডেটা ডিলিট করুন
-            await database.runAsync('DELETE FROM notes_backup;');
+            await database.executeSql('DELETE FROM notes_backup;');
             
             // নতুন ডেটা ইনসার্ট করুন
             for (const note of notes) {
-                await database.runAsync(
+                await database.executeSql(
                     `INSERT OR REPLACE INTO notes_backup 
                     (id, title, content, preview, width, height, isLocked, 
                      lastEdited, lastX, lastY, lastW, lastH, lastCursorPos, lastScrollY, created_at) 
@@ -471,16 +315,16 @@ const saveNotesToDatabase = async (notes) => {
             }
             
             // ব্যাকআপ ইনফো সেভ করুন
-            await database.runAsync(
+            await database.executeSql(
                 'INSERT INTO backup_info (backup_time, note_count, source) VALUES (?, ?, ?);',
                 [Date.now(), notes.length, 'auto_backup']
             );
             
-            await database.execAsync('COMMIT');
+            await database.executeSql('COMMIT;');
             
             return true;
         } catch (error) {
-            await database.execAsync('ROLLBACK');
+            await database.executeSql('ROLLBACK;');
             throw error;
         }
     } catch (error) {
@@ -491,34 +335,37 @@ const saveNotesToDatabase = async (notes) => {
 // ✅ JSON ফাইল থেকে নোটস লোড করুন
 const loadNotesFromJSONFile = async () => {
     try {
-        const fileInfo = await FileSystem.getInfoAsync(BACKUP_JSON_FILE);
+        const fileExists = await RNFS.exists(BACKUP_JSON_FILE);
         
-        if (fileInfo.exists && fileInfo.size > 0) {
-            const jsonString = await FileSystem.readAsStringAsync(BACKUP_JSON_FILE);
-            const backupData = JSON.parse(jsonString);
-            
-            if (backupData.notes && Array.isArray(backupData.notes) && backupData.notes.length > 0) {
+        if (fileExists) {
+            const fileStat = await RNFS.stat(BACKUP_JSON_FILE);
+            if (fileStat.size > 0) {
+                const jsonString = await RNFS.readFile(BACKUP_JSON_FILE, 'utf8');
+                const backupData = JSON.parse(jsonString);
                 
-                // ডেটা সোর্স ট্র্যাক করুন
-                await AsyncStorage.setItem(STORAGE_KEYS.DATA_SOURCE, 'json_file');
-                await AsyncStorage.setItem(STORAGE_KEYS.LAST_BACKUP_TIME, backupData.timestamp?.toString() || Date.now().toString());
-                
-                return backupData.notes.map(note => ({
-                    id: note.id || Date.now().toString() + Math.random(),
-                    title: note.title || 'Untitled Note',
-                    content: note.content || '',
-                    preview: note.preview || '',
-                    width: note.width || DEFAULT_NOTE_WIDTH,
-                    height: note.height || DEFAULT_NOTE_HEIGHT,
-                    isLocked: note.isLocked || false,
-                    lastEdited: note.lastEdited || Date.now(),
-                    lastX: note.lastX || width - 100,
-                    lastY: note.lastY || 400,
-                    lastW: note.lastW || DEFAULT_NOTE_WIDTH,
-                    lastH: note.lastH || DEFAULT_NOTE_HEIGHT,
-                    lastCursorPos: note.lastCursorPos || 0,
-                    lastScrollY: note.lastScrollY || 0
-                }));
+                if (backupData.notes && Array.isArray(backupData.notes) && backupData.notes.length > 0) {
+                    
+                    // ডেটা সোর্স ট্র্যাক করুন
+                    await AsyncStorage.setItem(STORAGE_KEYS.DATA_SOURCE, 'json_file');
+                    await AsyncStorage.setItem(STORAGE_KEYS.LAST_BACKUP_TIME, backupData.timestamp?.toString() || Date.now().toString());
+                    
+                    return backupData.notes.map(note => ({
+                        id: note.id || Date.now().toString() + Math.random(),
+                        title: note.title || 'Untitled Note',
+                        content: note.content || '',
+                        preview: note.preview || '',
+                        width: note.width || DEFAULT_NOTE_WIDTH,
+                        height: note.height || DEFAULT_NOTE_HEIGHT,
+                        isLocked: note.isLocked || false,
+                        lastEdited: note.lastEdited || Date.now(),
+                        lastX: note.lastX || width - 100,
+                        lastY: note.lastY || 400,
+                        lastW: note.lastW || DEFAULT_NOTE_WIDTH,
+                        lastH: note.lastH || DEFAULT_NOTE_HEIGHT,
+                        lastCursorPos: note.lastCursorPos || 0,
+                        lastScrollY: note.lastScrollY || 0
+                    }));
+                }
             }
         }
     } catch (error) {
@@ -533,33 +380,38 @@ const loadNotesFromDatabase = async () => {
         if (!database) return null;
         
         // প্রথমে চেক করুন ডাটাবেসে ডেটা আছে কিনা
-        const tableCheck = await database.getFirstAsync(
+        const tableResult = await database.executeSql(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='notes_backup';"
         );
         
-        if (!tableCheck) return null;
+        if (tableResult[0].rows.length === 0) return null;
         
-        const result = await database.getAllAsync(
+        const result = await database.executeSql(
             'SELECT * FROM notes_backup ORDER BY created_at DESC;'
         );
         
-        if (result && result.length > 0) {
-            const loadedNotes = result.map(row => ({
-                id: row.id || Date.now().toString() + Math.random(),
-                title: row.title || 'Untitled Note',
-                content: row.content || '',
-                preview: row.preview || '',
-                width: row.width || DEFAULT_NOTE_WIDTH,
-                height: row.height || DEFAULT_NOTE_HEIGHT,
-                isLocked: row.isLocked === 1,
-                lastEdited: row.lastEdited || Date.now(),
-                lastX: row.lastX || width - 100,
-                lastY: row.lastY || 400,
-                lastW: row.lastW || DEFAULT_NOTE_WIDTH,
-                lastH: row.lastH || DEFAULT_NOTE_HEIGHT,
-                lastCursorPos: row.lastCursorPos || 0,
-                lastScrollY: row.lastScrollY || 0
-            }));
+        const rows = result[0].rows;
+        if (rows.length > 0) {
+            const loadedNotes = [];
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows.item(i);
+                loadedNotes.push({
+                    id: row.id || Date.now().toString() + Math.random(),
+                    title: row.title || 'Untitled Note',
+                    content: row.content || '',
+                    preview: row.preview || '',
+                    width: row.width || DEFAULT_NOTE_WIDTH,
+                    height: row.height || DEFAULT_NOTE_HEIGHT,
+                    isLocked: row.isLocked === 1,
+                    lastEdited: row.lastEdited || Date.now(),
+                    lastX: row.lastX || width - 100,
+                    lastY: row.lastY || 400,
+                    lastW: row.lastW || DEFAULT_NOTE_WIDTH,
+                    lastH: row.lastH || DEFAULT_NOTE_HEIGHT,
+                    lastCursorPos: row.lastCursorPos || 0,
+                    lastScrollY: row.lastScrollY || 0
+                });
+            }
             
             // ডেটা সোর্স ট্র্যাক করুন
             await AsyncStorage.setItem(STORAGE_KEYS.DATA_SOURCE, 'sqlite_db');
@@ -673,9 +525,7 @@ const saveSettingsToBackup = async (settings) => {
             version: '2.0'
         };
         
-        await FileSystem.writeAsStringAsync(BACKUP_SETTINGS_FILE, JSON.stringify(backupData), {
-            encoding: FileSystem.EncodingType.UTF8
-        });
+        await RNFS.writeFile(BACKUP_SETTINGS_FILE, JSON.stringify(backupData), 'utf8');
         
         return true;
     } catch (error) {
@@ -686,19 +536,44 @@ const saveSettingsToBackup = async (settings) => {
 // ✅ সেটিংস লোড ফাংশন
 const loadSettingsFromBackup = async () => {
     try {
-        const fileInfo = await FileSystem.getInfoAsync(BACKUP_SETTINGS_FILE);
+        const fileExists = await RNFS.exists(BACKUP_SETTINGS_FILE);
         
-        if (fileInfo.exists && fileInfo.size > 0) {
-            const jsonString = await FileSystem.readAsStringAsync(BACKUP_SETTINGS_FILE);
-            const backupData = JSON.parse(jsonString);
-            
-            if (backupData.settings) {
-                return backupData.settings;
+        if (fileExists) {
+            const fileStat = await RNFS.stat(BACKUP_SETTINGS_FILE);
+            if (fileStat.size > 0) {
+                const jsonString = await RNFS.readFile(BACKUP_SETTINGS_FILE, 'utf8');
+                const backupData = JSON.parse(jsonString);
+                
+                if (backupData.settings) {
+                    return backupData.settings;
+                }
             }
         }
     } catch (error) {
     }
     return null;
+};
+
+// Show persistent notification
+const showPersistentNotification = () => {
+    PushNotification.localNotification({
+        channelId: "floating-notes-channel",
+        title: "📝 Floating Notes",
+        message: "Tap to open note pad instantly",
+        playSound: false,
+        soundName: null,
+        importance: "high",
+        priority: "high",
+        ignoreInForeground: false,
+        ongoing: true,
+        autoCancel: false,
+        visibility: "public",
+        actions: ['Open']
+    });
+};
+
+const hidePersistentNotification = () => {
+    PushNotification.cancelAllLocalNotifications();
 };
 
 export default function App() {
@@ -722,16 +597,11 @@ export default function App() {
     const [oldMasterPasswordInput, setOldMasterPasswordInput] = useState('');
     const [showNewMasterPassword, setShowNewMasterPassword] = useState(false);
     const [showOldMasterPassword, setShowOldMasterPassword] = useState(false);
-    
-    // নতুন স্টেট: ভাষা এবং টেক্সট দিক
-    const [language, setLanguage] = useState('en');
-    const [isRTL, setIsRTL] = useState(false);
-    
     // অ্যানিমেশন স্টেট
-    const [isMinimizing, setIsMinimizing] = useState(false);
-    const [isSettingsOpening, setIsSettingsOpening] = useState(false);
-    const [isSettingsClosing, setIsSettingsClosing] = useState(false);
-    const [isModalAnimating, setIsModalAnimating] = useState(false);
+const [isMinimizing, setIsMinimizing] = useState(false);
+const [isSettingsOpening, setIsSettingsOpening] = useState(false);
+const [isSettingsClosing, setIsSettingsClosing] = useState(false);
+const [isModalAnimating, setIsModalAnimating] = useState(false);
     
     // *** সিকিউরিটি প্রশ্ন স্টেট ***
     const [isSecurityQuestionSetupModalVisible, setIsSecurityQuestionSetupModalVisible] = useState(false);
@@ -819,40 +689,28 @@ export default function App() {
     const [noteToDeleteId, setNoteToDeleteId] = useState(null);
     const [deletePassword, setDeletePassword] = useState('');
     
-    // --- Animation & Ref Variables ---
-    const isDragging = useRef(false);
-    const saveTimerRef = useRef(null);
-    const noteWidth = useRef(new Animated.Value(DEFAULT_NOTE_WIDTH)).current;
-    const noteHeight = useRef(new Animated.Value(DEFAULT_NOTE_HEIGHT)).current;
-    const notePan = useRef(new Animated.ValueXY({ x: width - 100, y: 400 })).current;
-    const bubblePan = useRef(new Animated.ValueXY({ x: width - BUBBLE_SIZE - EDGE_SNAP, y: 100 })).current;
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const opacityAnim = useRef(new Animated.Value(1)).current;
-    const startSizeRef = useRef({ width: DEFAULT_NOTE_WIDTH, height: DEFAULT_NOTE_HEIGHT });
-    const isAnimatingClose = useRef(false);
+// --- Animation & Ref Variables ---
+const isDragging = useRef(false);
+const saveTimerRef = useRef(null);
+const noteWidth = useRef(new Animated.Value(DEFAULT_NOTE_WIDTH)).current;
+const noteHeight = useRef(new Animated.Value(DEFAULT_NOTE_HEIGHT)).current;
+const notePan = useRef(new Animated.ValueXY({ x: width - 100, y: 400 })).current;
+const bubblePan = useRef(new Animated.ValueXY({ x: width - BUBBLE_SIZE - EDGE_SNAP, y: 100 })).current;
+const scaleAnim = useRef(new Animated.Value(1)).current;
+const opacityAnim = useRef(new Animated.Value(1)).current;
+const startSizeRef = useRef({ width: DEFAULT_NOTE_WIDTH, height: DEFAULT_NOTE_HEIGHT });
+const isAnimatingClose = useRef(false);
 
-    // --- বাবল অবস্থান ট্র্যাকিং ---
-    const bubblePositionRef = useRef({ x: width - BUBBLE_SIZE - EDGE_SNAP, y: 100 }); 
-    const notePositionBeforeMinimizeRef = useRef({ x: width - 100, y: 400, width: DEFAULT_NOTE_WIDTH, height: DEFAULT_NOTE_HEIGHT });
+// --- বাবল অবস্থান ট্র্যাকিং ---
+const bubblePositionRef = useRef({ x: width - BUBBLE_SIZE - EDGE_SNAP, y: 100 }); 
+const notePositionBeforeMinimizeRef = useRef({ x: width - 100, y: 400, width: DEFAULT_NOTE_WIDTH, height: DEFAULT_NOTE_HEIGHT });
 
-    // --- অ্যাপ লোড স্টেট ---
-    const [isAppLoaded, setIsAppLoaded] = useState(false);
-    
-    // --- রেফ ক্লিনআপ রেফারেন্স (মেমরি লিক ফিক্স) ---
-    const cleanupRefs = useRef([]);
+// --- অ্যাপ লোড স্টেট ---
+const [isAppLoaded, setIsAppLoaded] = useState(false);
     
     // --- Utility ---
     const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
     const activeNote = notes.find(n => n.id === activeNoteId);
-    
-    // --- ট্রান্সলেশন ইউটিলিটি ফাংশন ---
-    const t = (key) => {
-        return TRANSLATIONS[language]?.[key] || TRANSLATIONS['en'][key] || key;
-    };
-    
-    // --- টেক্সট ডিরেকশন হ্যান্ডলার ---
-    const textDirectionStyle = isRTL ? { textAlign: 'right', writingDirection: 'rtl' } : { textAlign: 'left', writingDirection: 'ltr' };
-    const containerDirectionStyle = isRTL ? { flexDirection: 'row-reverse' } : { flexDirection: 'row' };
     
     // --- উন্নত স্ক্রলিং কনফিগারেশন ফাংশন ---
     const getEnhancedScrollProps = () => ({
@@ -923,78 +781,37 @@ export default function App() {
         }
     };
 
-    // ভাষা এবং টেক্সট ডিরেকশন লোড/সেভ
-    const loadLanguageAndDirection = async () => {
-        try {
-            const savedLanguage = await AsyncStorage.getItem(STORAGE_KEYS.LANGUAGE);
-            const savedTextDirection = await AsyncStorage.getItem(STORAGE_KEYS.TEXT_DIRECTION);
-            
-            if (savedLanguage) {
-                setLanguage(savedLanguage);
-            }
-            
-            if (savedTextDirection) {
-                setIsRTL(savedTextDirection === 'rtl');
-            } else {
-                // ডিফল্ট হিসেবে আরবি/হিব্রুর জন্য RTL সেট
-                const isRTLByLanguage = savedLanguage === 'ar' || savedLanguage === 'he';
-                setIsRTL(isRTLByLanguage);
-                await AsyncStorage.setItem(STORAGE_KEYS.TEXT_DIRECTION, isRTLByLanguage ? 'rtl' : 'ltr');
-            }
-        } catch (error) {
-        }
-    };
-
-    const saveLanguageAndDirection = async (newLanguage, newIsRTL) => {
-        try {
-            await AsyncStorage.setItem(STORAGE_KEYS.LANGUAGE, newLanguage);
-            await AsyncStorage.setItem(STORAGE_KEYS.TEXT_DIRECTION, newIsRTL ? 'rtl' : 'ltr');
-            setLanguage(newLanguage);
-            setIsRTL(newIsRTL);
-            
-            // আরবি বা হিব্রু ভাষার জন্য I18nManager সেট করুন
-            if (Platform.OS === 'android' || Platform.OS === 'ios') {
-                I18nManager.forceRTL(newIsRTL);
-                I18nManager.allowRTL(newIsRTL);
-            }
-        } catch (error) {
-        }
-    };
-
     // --- ডেটা লোড করার প্রধান ফাংশন ---
     const loadAllData = async () => {
         
         try {
-            // 1. ভাষা এবং টেক্সট ডিরেকশন লোড
-            await loadLanguageAndDirection();
-            
-            // 2. এনক্রিপশন কী লোড/জেনারেট করুন
+            // 1. এনক্রিপশন কী লোড/জেনারেট করুন
             const key = await loadOrGenerateEncryptionKey();
             setEncryptionKey(key);
             
-            // 3. সব উৎস থেকে নোটস লোড করুন
+            // 2. সব উৎস থেকে নোটস লোড করুন
             const loadedNotes = await loadNotesFromAllSources();
             setNotes(loadedNotes);
             
-            // 4. সেটিংস লোড করুন
+            // 3. সেটিংস লোড করুন
             const loadedSettings = await loadSettingsWithFallback();
             setSettings(loadedSettings);
             
-            // 5. মাস্টার পাসওয়ার্ড লোড করুন
+            // 4. মাস্টার পাসওয়ার্ড লোড করুন
             const loadedMasterPassword = await loadMasterPasswordFromStorage();
             setMasterPassword(loadedMasterPassword.password);
             setIsPasswordSet(loadedMasterPassword.isSet);
             
-            // 6. সিকিউরিটি প্রশ্ন লোড করুন
+            // 5. সিকিউরিটি প্রশ্ন লোড করুন
             const loadedSecurityQuestion = await loadSecurityQuestionFromStorage();
             setSecurityQuestion(loadedSecurityQuestion);
             setIsSecuritySetupComplete(loadedSecurityQuestion.answer.trim() !== '');
             
-            // 7. ডার্ক মোড সেটিং লোড করুন
+            // 6. ডার্ক মোড সেটিং লোড করুন
             const loadedDarkMode = await loadDarkModeSetting();
             setDarkModeEnabled(loadedDarkMode);
             
-            // 8. স্ক্রলিং গতি সেটিং লোড করুন
+            // 7. স্ক্রলিং গতি সেটিং লোড করুন
             const savedScrollSpeed = await AsyncStorage.getItem(STORAGE_KEYS.SCROLL_SPEED);
             if (savedScrollSpeed) {
                 setScrollSpeed(parseFloat(savedScrollSpeed));
@@ -1014,17 +831,17 @@ export default function App() {
                 }));
             }
             
-            // 9. নোটিফিকেশন সেটিং লোড করুন
+            // 8. নোটিফিকেশন সেটিং লোড করুন
             try {
                 const notificationEnabled = await AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATION_ENABLED);
                 setEnableNotification(notificationEnabled === 'true');
             } catch (error) {
             }
             
-            // 10. ব্যাকআপ ডিরেক্টরি তৈরি করুন
+            // 9. ব্যাকআপ ডিরেক্টরি তৈরি করুন
             await createBackupDirectory();
             
-            // 11. প্রথম লোডে ব্যাকআপ নোটিফিকেশন শো করুন
+            // 10. প্রথম লোডে ব্যাকআপ নোটিফিকেশন শো করুন
             setTimeout(() => {
                 showBackupNotification();
             }, 1500);
@@ -1241,7 +1058,7 @@ export default function App() {
         loadAllData();
         
         // অ্যাপ স্টেট চেঞ্জ হ্যান্ডলার
-        const appStateSubscription = AppState.addEventListener('change', nextAppState => {
+        const subscription = AppState.addEventListener('change', nextAppState => {
             if (nextAppState === 'active') {
                 // অ্যাপ ফোরগ্রাউন্ডে এলে ডেটা রিফ্রেশ করতে পারেন
                 if (isAppLoaded) {
@@ -1249,18 +1066,8 @@ export default function App() {
             }
         });
 
-        // রেফারেন্স ক্লিনআপ
-        cleanupRefs.current.push(appStateSubscription);
-
         return () => {
-            // সব ক্লিনআপ রেফারেন্স ডিসপোজ করুন
-            cleanupRefs.current.forEach(cleanup => {
-                if (cleanup && typeof cleanup.remove === 'function') {
-                    cleanup.remove();
-                }
-            });
-            cleanupRefs.current = [];
-            
+            subscription.remove();
             if (scrollMomentumTimeoutRef.current) {
                 clearTimeout(scrollMomentumTimeoutRef.current);
             }
@@ -1322,93 +1129,15 @@ export default function App() {
     }, [securityQuestion, isAppLoaded]);
 
     // --- নোটিফিকেশন ফাংশনগুলি ---
-    const requestNotificationPermission = async () => {
-        try {
-            const { status } = await Notifications.getPermissionsAsync();
-            if (status !== 'granted') {
-                const { status: newStatus } = await Notifications.requestPermissionsAsync();
-                return newStatus === 'granted';
-            }
-            return true;
-        } catch (error) {
-            return false;
-        }
-    };
-
-    const showPersistentNotification = async () => {
-        try {
-            const hasPermission = await requestNotificationPermission();
-            if (!hasPermission) {
-                Alert.alert(
-                    "Permission Required",
-                    "Please enable notifications in settings to use quick launch feature.",
-                    [{ text: "OK" }]
-                );
-                return false;
-            }
-
-            await Notifications.scheduleNotificationAsync({
-                content: {
-                    title: "📝 Floating Notes",
-                    body: "Tap to open note pad instantly",
-                    subtitle: "Quick Launch",
-                    sound: false,
-                    priority: Notifications.AndroidNotificationPriority.HIGH,
-                    autoDismiss: false,
-                    sticky: true,
-                    data: { action: "open_floating_notes" },
-                },
-                trigger: null, // নোটিফিকেশন এখনই দেখাবে
-            });
-
-            return true;
-        } catch (error) {
-            Alert.alert(
-                "Notification Error",
-                "Could not show notification. Please check notification permissions."
-            );
-            return false;
-        }
-    };
-
-    const hidePersistentNotification = async () => {
-        try {
-            await Notifications.cancelAllScheduledNotificationsAsync();
-            return true;
-        } catch (error) {
-            return false;
-        }
-    };
-
-    // নোটিফিকেশন রিস্পন্স হ্যান্ডলার
-    const handleNotificationResponse = (response) => {
-        const data = response.notification.request.content.data;
-        if (data?.action === "open_floating_notes") {
-            openFromBubble();
-        }
-    };
-
-    // নোটিফিকেশন লিস্টেনার সেটআপ (মেমরি লিক ফিক্স সহ)
     useEffect(() => {
         if (!isAppLoaded) return;
         
-        // নোটিফিকেশন রিসিভ লিস্টেনার
-        const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-        });
-
-        // নোটিফিকেশন রেস্পন্স লিস্টেনার
-        const responseListener = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
-
-        // ক্লিনআপ রেফারেন্সে যোগ করুন
-        cleanupRefs.current.push(notificationListener);
-        cleanupRefs.current.push(responseListener);
-
-        return () => {
-            // ক্লিনআপ
-            notificationListener.remove();
-            responseListener.remove();
-        };
-    }, [isAppLoaded]);
+        if (enableNotification) {
+            showPersistentNotification();
+        } else {
+            hidePersistentNotification();
+        }
+    }, [enableNotification, isAppLoaded]);
 
     // --- সরলীকৃত কার্সার পজিশন হ্যান্ডলার ---
     const handleCursorPosition = useCallback((position) => {
@@ -1750,7 +1479,7 @@ const bubbleResponder = useRef(
         }, 500);
         
         const lines = newContent.split('\n');
-        const newTitle = lines[0].trim().substring(0, 50) || t('untitledNote'); 
+        const newTitle = lines[0].trim().substring(0, 50) || 'Untitled Note'; 
         const newPreview = newContent.split('\n')[0].substring(0, 50) || '';
         
         setNotes(prevNotes => {
@@ -1801,7 +1530,7 @@ const bubbleResponder = useRef(
     const handleCopy = () => {
         if (activeNote) {
             Clipboard.setString(activeNote.content);
-            Alert.alert(t("copied"), "Note content copied to clipboard.");
+            Alert.alert("Copied", "Note content copied to clipboard.");
         }
     };
 
@@ -1820,14 +1549,14 @@ const bubbleResponder = useRef(
                 
                 handleCursorPosition(newCursorPosition);
                 
-                Alert.alert(t("pasted"), "Content pasted successfully.");
+                Alert.alert("Pasted", "Content pasted successfully.");
                 
                 if (isViewingMode) {
                     setIsViewingMode(false);
                 }
             }
         } catch (error) {
-            Alert.alert(t("somethingWentWrong"), "Failed to paste content.");
+            Alert.alert("Error", "Failed to paste content.");
         }
     };
 
@@ -1888,7 +1617,7 @@ const bubbleResponder = useRef(
                 // শেয়ার বাতিল
             }
         } catch (error) {
-            Alert.alert(t("somethingWentWrong"), "Failed to share note.");
+            Alert.alert("Error", "Failed to share note.");
         }
     };
 
@@ -1960,12 +1689,12 @@ const bubbleResponder = useRef(
         const noteToDelete = notes.find(n => n.id === id);
 
         Alert.alert(
-            t("deleteNote"),
-            t("confirmDelete"),
+            "Delete Note",
+            `আপনি কি নিশ্চিতভাবে এই নোটটি ("${noteToDelete?.title || 'Untitled Note'}") মুছে ফেলতে চান?`,
             [
-                { text: t("cancel"), style: "cancel" },
+                { text: "Cancel", style: "cancel" },
                 { 
-                    text: t("delete"), 
+                    text: "Delete", 
                     onPress: () => {
                         setNotes(prev => prev.filter(note => note.id !== id));
                         if (activeNoteId === id) {
@@ -2031,7 +1760,7 @@ const bubbleResponder = useRef(
                 setShowNote(true);
             }
         } else {
-            Alert.alert(t("somethingWentWrong"), t("incorrectPassword"));
+            Alert.alert("Error", "ভুল মাস্টার পাসওয়ার্ড। আবার চেষ্টা করুন।");
             setTempPassword('');
             setActiveNoteId(null);
             setPasswordModalVisible(false);
@@ -2040,7 +1769,7 @@ const bubbleResponder = useRef(
     
     const handleSetPasswordSubmit = () => {
         if (newMasterPasswordInput.length < 3) {
-            Alert.alert(t("somethingWentWrong"), t("passwordTooShort"));
+            Alert.alert("Error", "Password must be at least 3 characters long.");
             return;
         }
 
@@ -2050,8 +1779,8 @@ const bubbleResponder = useRef(
         setNewMasterPasswordInput('');
         
         Alert.alert(
-            t("success"), 
-            t("passwordSetSuccess"),
+            "Success", 
+            "Password set successfully!\n\nNow please set up a security question for password recovery.",
             [
                 {
                     text: "Setup Security Question",
@@ -2066,12 +1795,12 @@ const bubbleResponder = useRef(
     const handlePasswordChangeSubmit = () => {
         // ওল্ড পাসওয়ার্ড চেক
         if (oldMasterPasswordInput !== masterPassword) {
-            Alert.alert(t("somethingWentWrong"), t("incorrectPassword"));
+            Alert.alert("Error", "Old Password is incorrect.");
             return;
         }
         
         if (newMasterPasswordInput.length < 3) {
-            Alert.alert(t("somethingWentWrong"), t("passwordTooShort"));
+            Alert.alert("Error", "New password must be at least 3 characters long.");
             return;
         }
 
@@ -2079,13 +1808,13 @@ const bubbleResponder = useRef(
         setIsChangePasswordModalVisible(false);
         setOldMasterPasswordInput('');
         setNewMasterPasswordInput('');
-        Alert.alert(t("success"), t("passwordChangedSuccess"));
+        Alert.alert("Success", "Password changed successfully!");
     };
     
     // --- সিকিউরিটি প্রশ্ন ফাংশনগুলি ---
     const handleSetupSecurityQuestion = async () => {
         if (securityQuestion.answer.trim() === '') {
-            Alert.alert(t("somethingWentWrong"), "Please answer the security question.");
+            Alert.alert("Error", "Please answer the security question.");
             return;
         }
 
@@ -2101,14 +1830,14 @@ const bubbleResponder = useRef(
             setIsSecurityQuestionSetupModalVisible(false);
             
             Alert.alert(
-                t("success"), 
+                "Success", 
                 isSecuritySetupComplete 
                     ? "Security question has been updated successfully!"
                     : "Security question has been set up successfully!\n\nPlease remember your answer - you will need it to recover your password.",
                 [{ text: "OK" }]
             );
         } catch (error) {
-            Alert.alert(t("somethingWentWrong"), "Failed to save security question.");
+            Alert.alert("Error", "Failed to save security question.");
         }
     };
 
@@ -2123,7 +1852,7 @@ const bubbleResponder = useRef(
 
     const handleVerifySecurityAnswer = async () => {
         if (securityAnswerInput.trim() === '') {
-            Alert.alert(t("somethingWentWrong"), "Please answer the security question.");
+            Alert.alert("Error", "Please answer the security question.");
             return;
         }
 
@@ -2154,17 +1883,17 @@ const bubbleResponder = useRef(
                     ]
                 );
             } else {
-                Alert.alert(t("somethingWentWrong"), "Security answer is incorrect.");
+                Alert.alert("Error", "Security answer is incorrect.");
                 setSecurityAnswerInput('');
             }
         } catch (error) {
-            Alert.alert(t("somethingWentWrong"), "Failed to verify security answer.");
+            Alert.alert("Error", "Failed to verify security answer.");
         }
     };
 
     const handleVerifySecurityAnswerForForget = async () => {
         if (securityAnswerInput.trim() === '') {
-            Alert.alert(t("somethingWentWrong"), "Please answer the security question.");
+            Alert.alert("Error", "Please answer the security question.");
             return;
         }
 
@@ -2177,17 +1906,17 @@ const bubbleResponder = useRef(
                 setIsRecoveryPasswordModalVisible(true);
                 setSecurityAnswerInput('');
             } else {
-                Alert.alert(t("somethingWentWrong"), "Security answer is incorrect.");
+                Alert.alert("Error", "Security answer is incorrect.");
                 setSecurityAnswerInput('');
             }
         } catch (error) {
-            Alert.alert(t("somethingWentWrong"), "Failed to verify security answer.");
+            Alert.alert("Error", "Failed to verify security answer.");
         }
     };
 
     const handleRecoveryPasswordSubmit = () => {
         if (recoveryPasswordInput.length < 3) {
-            Alert.alert(t("somethingWentWrong"), t("passwordTooShort"));
+            Alert.alert("Error", "New password must be at least 3 characters long.");
             return;
         }
 
@@ -2197,7 +1926,7 @@ const bubbleResponder = useRef(
         setRecoveryPasswordInput('');
         
         Alert.alert(
-            t("success"), 
+            "Success", 
             "Password recovered successfully!\n\nYour new master password has been set.",
             [{ text: "OK" }]
         );
@@ -2213,7 +1942,7 @@ const bubbleResponder = useRef(
                         text: "Set Up Now", 
                         onPress: () => setIsSecurityQuestionSetupModalVisible(true) 
                     },
-                    { text: t("cancel"), style: "cancel" }
+                    { text: "Cancel", style: "cancel" }
                 ]
             );
             return;
@@ -2230,7 +1959,7 @@ const bubbleResponder = useRef(
                         setIsSecurityQuestionModalVisible(true);
                     }
                 },
-                { text: t("cancel"), style: "cancel" }
+                { text: "Cancel", style: "cancel" }
             ]
         );
     };
@@ -2248,14 +1977,14 @@ const bubbleResponder = useRef(
                     : note
                 )
             );
-            Alert.alert(t("success"), `${t("noteUnlocked")}: "${noteToLock.title}"`);
+            Alert.alert("Success", `নোট "${noteToLock.title}" আনলক করা হয়েছে।`);
         } else {
             if (!isPasswordSet) {
                 Alert.alert(
                     "Password Not Set",
                     "You need to set a password first to lock notes. Go to Settings > Security to set up your password.",
                     [
-                        { text: t("cancel"), style: "cancel" },
+                        { text: "Cancel", style: "cancel" },
                         {
                             text: "Go to Settings",
                             onPress: () => {
@@ -2268,12 +1997,12 @@ const bubbleResponder = useRef(
             }
             
             Alert.alert(
-                t("lockNote"),
-                `Are you sure you want to lock note "${noteToLock.title}"?`,
+                "Lock Note",
+                `আপনি কি নিশ্চিত নোট "${noteToLock.title}" লক করতে চান?`,
                 [
-                    { text: t("cancel"), style: "cancel" },
+                    { text: "Cancel", style: "cancel" },
                     {
-                        text: t("lockNote"),
+                        text: "Lock",
                         onPress: () => {
                             setNotes(prevNotes => 
                                 prevNotes.map(note => 
@@ -2318,7 +2047,7 @@ const bubbleResponder = useRef(
             ...prev 
         }));
         setIsSettingsVisible(false);
-        Alert.alert(t("success"), "Settings saved successfully.");
+        Alert.alert("Success", "Settings saved successfully.");
     };
 
     const handleSettingsCancel = () => {
@@ -2804,7 +2533,7 @@ const handleSettingsClose = () => {
         }
     }, [isViewingMode, activeNoteId]);
 
-    // *** উন্নত কীবোর্ড ম্যানেজমেন্ট (মেমরি লিক ফিক্স সহ) ***
+    // *** উন্নত কীবোর্ড ম্যানেজমেন্ট ***
     useEffect(() => {
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => { 
             setIsKeyboardVisible(true);
@@ -2834,21 +2563,15 @@ const handleSettingsClose = () => {
             }
         });
 
-        // ক্লিনআপ রেফারেন্সে যোগ করুন
-        cleanupRefs.current.push(keyboardDidShowListener);
-        cleanupRefs.current.push(keyboardDidHideListener);
-
         return () => {
-            // ক্লিনআপ
             keyboardDidShowListener.remove();
             keyboardDidHideListener.remove();
         };
     }, [activeNoteId, isViewingMode, savePositions]);
 
-    // Cleanup intervals on unmount (মেমরি লিক ফিক্স)
+    // Cleanup intervals on unmount
     useEffect(() => {
         return () => {
-            // সব টাইমার ক্লিয়ার করুন
             if (textSelectionIntervalRef.current) {
                 clearInterval(textSelectionIntervalRef.current);
             }
@@ -2861,21 +2584,10 @@ const handleSettingsClose = () => {
             if (scrollMomentumTimeoutRef.current) {
                 clearTimeout(scrollMomentumTimeoutRef.current);
             }
-            if (saveTimerRef.current) {
-                clearTimeout(saveTimerRef.current);
-            }
-            
-            // সব অ্যানিমেশন স্টপ করুন
-            notePan.stopAnimation();
-            bubblePan.stopAnimation();
-            scaleAnim.stopAnimation();
-            opacityAnim.stopAnimation();
-            noteWidth.stopAnimation();
-            noteHeight.stopAnimation();
         };
     }, []);
-
-    // *** View Mode এ ট্যাপ করে Edit Mode এ যাওয়া (অ্যাক্সেসিবিলিটি সহ) ***
+    
+    // *** View Mode এ ট্যাপ করে Edit Mode এ যাওয়া ***
     const handlePressInViewMode = () => {
         const isNoteDisabled = activeNote?.isLocked === true && activeNoteId !== isNoteTemporarilyUnlockedId;
 
@@ -2906,14 +2618,11 @@ const handleSettingsClose = () => {
                         transform: [{ translateY: fastScrollIndicatorY }],
                     }
                 ]}
-                accessible={true}
-                accessibilityLabel={t("scrollIndicator")}
-                accessibilityRole="adjustable"
             >
                 <View style={styles.scrollIndicatorContent}>
-                    <Ionicons name="chevron-up" size={12} color="#666" />
+                    <Icon name="chevron-up" size={12} color="#666" />
                     <View style={styles.scrollIndicatorLine} />
-                    <Ionicons name="chevron-down" size={12} color="#666" />
+                    <Icon name="chevron-down" size={12} color="#666" />
                 </View>
             </Animated.View>
         );
@@ -2931,12 +2640,9 @@ const handleSettingsClose = () => {
                         opacity: deleteConfirmAnim,
                     }
                 ]}
-                accessible={true}
-                accessibilityLabel={t("deleteConfirmation")}
-                accessibilityRole="alert"
             >
                 <View style={styles.deleteConfirmCircle}>
-                    <Ionicons name="close-circle" size={60} color="#C0392B" />
+                    <Icon name="close-circle" size={60} color="#C0392B" />
                 </View>
             </Animated.View>
         );
@@ -2953,32 +2659,27 @@ const handleSettingsClose = () => {
                     backgroundColor: settings.topBarColor,
                 },
             ]}
-            accessible={true}
-            accessibilityLabel={t("floatingNoteBubble")}
-            accessibilityHint={t("doubleTapToOpen")}
-            accessibilityRole="button"
         >
-            <Ionicons name="documents-outline" size={BUBBLE_SIZE * 0.5} color={settings.iconColor} />
+            <Icon name="documents-outline" size={BUBBLE_SIZE * 0.5} color={settings.iconColor} />
         </Animated.View>
     );
 
     // --- সিকিউরিটি প্রশ্ন সেটআপ মোডাল ---
     const renderSecurityQuestionSetupModal = () => (
         <Modal
-            animationType={isModalAnimating ? "slide" : "fade"}
-            transparent={true}
-            visible={isSecurityQuestionSetupModalVisible}
-            onRequestClose={handleSecurityQuestionClose}
-            accessibilityViewIsModal={true}
-        >
+    animationType={isModalAnimating ? "slide" : "fade"}
+    transparent={true}
+    visible={isSecurityQuestionSetupModalVisible}
+    onRequestClose={handleSecurityQuestionClose}
+>
             <View style={styles.centeredView}>
                 <ScrollView style={styles.fullWidthModal}>
                     <View style={styles.modalView}>
-                        <Text style={[styles.modalTitle, textDirectionStyle]}>
+                        <Text style={styles.modalTitle}>
                             {isSecuritySetupComplete ? "Set New Security Question" : "Setup Security Question"}
                         </Text>
                         
-                        <Text style={[styles.securityDescription, textDirectionStyle]}>
+                        <Text style={styles.securityDescription}>
                             {isSecuritySetupComplete 
                                 ? "Set a new security question for password recovery."
                                 : "Set up a security question to recover your password if you forget it."
@@ -2986,12 +2687,12 @@ const handleSettingsClose = () => {
                         </Text>
 
                         <View style={styles.securityQuestionContainer}>
-                            <Text style={[styles.securityQuestionLabel, textDirectionStyle]}>
+                            <Text style={styles.securityQuestionLabel}>
                                 Security Question:
                             </Text>
                             
-                            <View style={[styles.questionPickerContainer, containerDirectionStyle]}>
-                                <Text style={[styles.selectedQuestionText, textDirectionStyle]}>
+                            <View style={styles.questionPickerContainer}>
+                                <Text style={styles.selectedQuestionText}>
                                     {securityQuestion.question}
                                 </Text>
                                 <TouchableOpacity 
@@ -3011,25 +2712,22 @@ const handleSettingsClose = () => {
                                                     }));
                                                 }
                                             })).concat([
-                                                { text: t("cancel"), style: "cancel" }
+                                                { text: "Cancel", style: "cancel" }
                                             ])
                                         );
                                     }}
-                                    accessible={true}
-                                    accessibilityLabel={t("changeQuestion")}
-                                    accessibilityRole="button"
                                 >
-                                    <Text style={styles.changeQuestionText}>{t("change")}</Text>
+                                    <Text style={styles.changeQuestionText}>Change</Text>
                                 </TouchableOpacity>
                             </View>
                             
-                            <Text style={[styles.securityQuestionLabel, textDirectionStyle]}>
+                            <Text style={styles.securityQuestionLabel}>
                                 Your Answer:
                             </Text>
                             
                             <View style={styles.passwordInputContainer}>
                                 <TextInput
-                                    style={[styles.securityAnswerInput, textDirectionStyle]}
+                                    style={styles.securityAnswerInput}
                                     value={securityQuestion.answer}
                                     onChangeText={(text) => {
                                         setSecurityQuestion(prev => ({
@@ -3039,17 +2737,12 @@ const handleSettingsClose = () => {
                                     }}
                                     placeholder="Your answer"
                                     secureTextEntry={!showSecurityAnswer}
-                                    accessibilityLabel={t("securityAnswer")}
-                                    accessibilityHint="Enter your answer for the security question"
                                 />
                                 <TouchableOpacity 
                                     style={styles.passwordToggle} 
                                     onPress={() => setShowSecurityAnswer(!showSecurityAnswer)}
-                                    accessible={true}
-                                    accessibilityLabel={showSecurityAnswer ? "Hide answer" : "Show answer"}
-                                    accessibilityRole="button"
                                 >
-                                    <Ionicons 
+                                    <Icon 
                                         name={showSecurityAnswer ? "eye-off" : "eye"} 
                                         size={20} 
                                         color="#888" 
@@ -3058,23 +2751,17 @@ const handleSettingsClose = () => {
                             </View>
                         </View>
 
-                        <View style={[styles.buttonRow, containerDirectionStyle]}>
+                        <View style={styles.buttonRow}>
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.cancelButton]}
                                 onPress={() => setIsSecurityQuestionSetupModalVisible(false)}
-                                accessible={true}
-                                accessibilityLabel={t("cancel")}
-                                accessibilityRole="button"
                             >
-                                <Text style={styles.closeButtonText}>{t("cancel")}</Text>
+                                <Text style={styles.closeButtonText}>Cancel</Text>
                             </TouchableOpacity>
                             
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.saveButton]}
                                 onPress={handleSetupSecurityQuestion}
-                                accessible={true}
-                                accessibilityLabel={isSecuritySetupComplete ? "Save New Question" : "Save Question"}
-                                accessibilityRole="button"
                             >
                                 <Text style={styles.closeButtonText}>
                                     {isSecuritySetupComplete ? "Save New Question" : "Save Question"}
@@ -3098,7 +2785,7 @@ const renderSecurityQuestionModal = () => {
     
     const handleVerifyOldAnswer = async () => {
         if (securityAnswerInput.trim() === '') {
-            Alert.alert(t("somethingWentWrong"), "Please enter your current security answer.");
+            Alert.alert("Error", "Please enter your current security answer.");
             return;
         }
 
@@ -3110,22 +2797,22 @@ const renderSecurityQuestionModal = () => {
                 setIsOldAnswerVerified(true);
                 Alert.alert("Verified", "Old security answer verified successfully!");
             } else {
-                Alert.alert(t("somethingWentWrong"), "Security answer is incorrect.");
+                Alert.alert("Error", "Security answer is incorrect.");
                 setSecurityAnswerInput('');
             }
         } catch (error) {
-            Alert.alert(t("somethingWentWrong"), "Failed to verify security answer.");
+            Alert.alert("Error", "Failed to verify security answer.");
         }
     };
 
     const handleSetNewSecurityQuestion = async () => {
         if (!isOldAnswerVerified) {
-            Alert.alert(t("somethingWentWrong"), "Please verify your old security answer first.");
+            Alert.alert("Error", "Please verify your old security answer first.");
             return;
         }
 
         if (newSecurityAnswer.trim() === '') {
-            Alert.alert(t("somethingWentWrong"), "Please enter answer for new security question.");
+            Alert.alert("Error", "Please enter answer for new security question.");
             return;
         }
 
@@ -3147,12 +2834,12 @@ const renderSecurityQuestionModal = () => {
             setIsOldAnswerVerified(false);
             
             Alert.alert(
-                t("success"), 
+                "Success", 
                 "Security question has been updated successfully!",
                 [{ text: "OK" }]
             );
         } catch (error) {
-            Alert.alert(t("somethingWentWrong"), "Failed to update security question.");
+            Alert.alert("Error", "Failed to update security question.");
         }
     };
 
@@ -3170,52 +2857,46 @@ const renderSecurityQuestionModal = () => {
             transparent={true}
             visible={isSecurityQuestionModalVisible}
             onRequestClose={handleCloseModal}
-            accessibilityViewIsModal={true}
         >
             <View style={styles.centeredView}>
                 <ScrollView style={styles.fullWidthModal}>
                     <View style={styles.modalView}>
-                        <Text style={[styles.modalTitle, textDirectionStyle]}>
+                        <Text style={styles.modalTitle}>
                             {isUpdateMode ? "Update Security Question" : "Security Verification"}
                         </Text>
                         
-                        <Text style={[styles.securityDescription, textDirectionStyle]}>
+                        <Text style={styles.securityDescription}>
                             {isUpdateMode 
                                 ? "First verify your old security answer, then set a new security question."
                                 : "Please answer your security question to reset your password:"}
                         </Text>
                         
                         <View style={styles.securityQuestionContainer}>
-                            <Text style={[styles.securityQuestionLabel, textDirectionStyle]}>
+                            <Text style={styles.securityQuestionLabel}>
                                 Current Security Question:
                             </Text>
-                            <Text style={[styles.selectedQuestionText, textDirectionStyle]}>
+                            <Text style={styles.selectedQuestionText}>
                                 {securityQuestion.question}
                             </Text>
                             
-                            <Text style={[styles.securityQuestionLabel, textDirectionStyle]}>
+                            <Text style={styles.securityQuestionLabel}>
                                 Verify Your Current Answer:
                             </Text>
                             
                             <View style={styles.passwordInputContainer}>
                                 <TextInput
-                                    style={[styles.securityAnswerInput, textDirectionStyle]}
+                                    style={styles.securityAnswerInput}
                                     value={securityAnswerInput}
                                     onChangeText={setSecurityAnswerInput}
                                     placeholder="Enter current security answer"
                                     secureTextEntry={!showSecurityAnswer}
                                     editable={!isOldAnswerVerified}
-                                    accessibilityLabel={t("verifyAnswer")}
-                                    accessibilityHint="Enter your current security answer"
                                 />
                                 <TouchableOpacity 
                                     style={styles.passwordToggle} 
                                     onPress={() => setShowSecurityAnswer(!showSecurityAnswer)}
-                                    accessible={true}
-                                    accessibilityLabel={showSecurityAnswer ? "Hide answer" : "Show answer"}
-                                    accessibilityRole="button"
                                 >
-                                    <Ionicons 
+                                    <Icon 
                                         name={showSecurityAnswer ? "eye-off" : "eye"} 
                                         size={20} 
                                         color="#888" 
@@ -3227,15 +2908,12 @@ const renderSecurityQuestionModal = () => {
                                 <TouchableOpacity
                                     style={[styles.modalButton, styles.saveButton, { marginTop: 10 }]}
                                     onPress={handleVerifyOldAnswer}
-                                    accessible={true}
-                                    accessibilityLabel={t("verify")}
-                                    accessibilityRole="button"
                                 >
-                                    <Text style={styles.closeButtonText}>{t("verify")}</Text>
+                                    <Text style={styles.closeButtonText}>Verify Answer</Text>
                                 </TouchableOpacity>
                             ) : (
                                 <View style={styles.verifiedBadge}>
-                                    <Ionicons name="checkmark-circle" size={20} color="#27AE60" />
+                                    <Icon name="checkmark-circle" size={20} color="#27AE60" />
                                     <Text style={styles.verifiedText}>Verified Successfully</Text>
                                 </View>
                             )}
@@ -3243,12 +2921,12 @@ const renderSecurityQuestionModal = () => {
 
                         {isOldAnswerVerified && (
                             <View style={[styles.securityQuestionContainer, { marginTop: 20 }]}>
-                                <Text style={[styles.securityQuestionLabel, textDirectionStyle]}>
+                                <Text style={styles.securityQuestionLabel}>
                                     Set New Security Question:
                                 </Text>
                                 
-                                <View style={[styles.questionPickerContainer, containerDirectionStyle]}>
-                                    <Text style={[styles.selectedQuestionText, textDirectionStyle]}>
+                                <View style={styles.questionPickerContainer}>
+                                    <Text style={styles.selectedQuestionText}>
                                         {newSecurityQuestion}
                                     </Text>
                                     <TouchableOpacity 
@@ -3263,40 +2941,32 @@ const renderSecurityQuestionModal = () => {
                                                         setNewSecurityQuestion(question);
                                                     }
                                                 })).concat([
-                                                    { text: t("cancel"), style: "cancel" }
+                                                    { text: "Cancel", style: "cancel" }
                                                 ])
                                             );
                                         }}
-                                        accessible={true}
-                                        accessibilityLabel={t("changeQuestion")}
-                                        accessibilityRole="button"
                                     >
-                                        <Text style={styles.changeQuestionText}>{t("change")}</Text>
+                                        <Text style={styles.changeQuestionText}>Change</Text>
                                     </TouchableOpacity>
                                 </View>
                                 
-                                <Text style={[styles.securityQuestionLabel, textDirectionStyle]}>
+                                <Text style={styles.securityQuestionLabel}>
                                     New Answer:
                                 </Text>
                                 
                                 <View style={styles.passwordInputContainer}>
                                     <TextInput
-                                        style={[styles.securityAnswerInput, textDirectionStyle]}
+                                        style={styles.securityAnswerInput}
                                         value={newSecurityAnswer}
                                         onChangeText={setNewSecurityAnswer}
                                         placeholder="Enter new security answer"
                                         secureTextEntry={!showNewSecurityAnswer}
-                                        accessibilityLabel={t("newAnswer")}
-                                        accessibilityHint="Enter your new security answer"
                                     />
                                     <TouchableOpacity 
                                         style={styles.passwordToggle} 
                                         onPress={() => setShowNewSecurityAnswer(!showNewSecurityAnswer)}
-                                        accessible={true}
-                                        accessibilityLabel={showNewSecurityAnswer ? "Hide answer" : "Show answer"}
-                                        accessibilityRole="button"
                                     >
-                                        <Ionicons 
+                                        <Icon 
                                             name={showNewSecurityAnswer ? "eye-off" : "eye"} 
                                             size={20} 
                                             color="#888" 
@@ -3306,15 +2976,12 @@ const renderSecurityQuestionModal = () => {
                             </View>
                         )}
 
-                        <View style={[styles.buttonRow, containerDirectionStyle]}>
+                        <View style={styles.buttonRow}>
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.cancelButton]}
                                 onPress={handleCloseModal}
-                                accessible={true}
-                                accessibilityLabel={t("cancel")}
-                                accessibilityRole="button"
                             >
-                                <Text style={styles.closeButtonText}>{t("cancel")}</Text>
+                                <Text style={styles.closeButtonText}>Cancel</Text>
                             </TouchableOpacity>
                             
                             {isUpdateMode ? (
@@ -3322,24 +2989,18 @@ const renderSecurityQuestionModal = () => {
                                     style={[styles.modalButton, styles.saveButton]}
                                     onPress={handleSetNewSecurityQuestion}
                                     disabled={!isOldAnswerVerified}
-                                    accessible={true}
-                                    accessibilityLabel={t("save")}
-                                    accessibilityRole="button"
                                 >
                                     <Text style={styles.closeButtonText}>
-                                        {t("save")}
+                                        Set New Question
                                     </Text>
                                 </TouchableOpacity>
                             ) : (
                                 <TouchableOpacity
                                     style={[styles.modalButton, styles.saveButton]}
                                     onPress={handleVerifySecurityAnswerForForget}
-                                    accessible={true}
-                                    accessibilityLabel={t("verify")}
-                                    accessibilityRole="button"
                                 >
                                     <Text style={styles.closeButtonText}>
-                                        {t("verify")}
+                                        Verify & Reset Password
                                     </Text>
                                 </TouchableOpacity>
                             )}
@@ -3361,34 +3022,28 @@ const renderSecurityQuestionModal = () => {
                 setIsRecoveryPasswordModalVisible(false);
                 setRecoveryPasswordInput('');
             }}
-            accessibilityViewIsModal={true}
         >
             <View style={styles.centeredView}>
                 <View style={styles.modalView}>
-                    <Text style={[styles.modalTitle, textDirectionStyle]}>{t("setPassword")}</Text>
+                    <Text style={styles.modalTitle}>Set New Password</Text>
                     
-                    <Text style={[styles.securityDescription, textDirectionStyle]}>
+                    <Text style={styles.securityDescription}>
                         Security verified! Please set a new master password.
                     </Text>
                     
                     <View style={styles.passwordInputContainer}>
                         <TextInput
-                            style={[styles.securityAnswerInput, textDirectionStyle]}
+                            style={styles.securityAnswerInput}
                             value={recoveryPasswordInput}
                             onChangeText={setRecoveryPasswordInput}
                             placeholder="New master password (min 3 characters)"
                             secureTextEntry={!showRecoveryPassword}
-                            accessibilityLabel={t("newPassword")}
-                            accessibilityHint="Enter new password, minimum 3 characters"
                         />
                         <TouchableOpacity 
                             style={styles.passwordToggle} 
                             onPress={() => setShowRecoveryPassword(!showRecoveryPassword)}
-                            accessible={true}
-                            accessibilityLabel={showRecoveryPassword ? "Hide password" : "Show password"}
-                            accessibilityRole="button"
                         >
-                            <Ionicons 
+                            <Icon 
                                 name={showRecoveryPassword ? "eye-off" : "eye"} 
                                 size={20} 
                                 color="#888" 
@@ -3396,28 +3051,22 @@ const renderSecurityQuestionModal = () => {
                         </TouchableOpacity>
                     </View>
 
-                    <View style={[styles.buttonRow, containerDirectionStyle]}>
+                    <View style={styles.buttonRow}>
                         <TouchableOpacity
                             style={[styles.modalButton, styles.cancelButton]}
                             onPress={() => {
                                 setIsRecoveryPasswordModalVisible(false);
                                 setRecoveryPasswordInput('');
                             }}
-                            accessible={true}
-                            accessibilityLabel={t("cancel")}
-                            accessibilityRole="button"
                         >
-                            <Text style={styles.closeButtonText}>{t("cancel")}</Text>
+                            <Text style={styles.closeButtonText}>Cancel</Text>
                         </TouchableOpacity>
                         
                         <TouchableOpacity
                             style={[styles.modalButton, styles.saveButton]}
                             onPress={handleRecoveryPasswordSubmit}
-                            accessible={true}
-                            accessibilityLabel={t("save")}
-                            accessibilityRole="button"
                         >
-                            <Text style={styles.closeButtonText}>{t("save")}</Text>
+                            <Text style={styles.closeButtonText}>Set New Password</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -3427,58 +3076,45 @@ const renderSecurityQuestionModal = () => {
 
     const renderSetPasswordModal = () => (
         <Modal
-            animationType={isModalAnimating ? "slide" : "fade"}
-            transparent={true}
-            visible={isChangePasswordModalVisible && !isPasswordSet}
-            onRequestClose={handleSetPasswordClose}
-            accessibilityViewIsModal={true}
-        >
+    animationType={isModalAnimating ? "slide" : "fade"}
+    transparent={true}
+    visible={isChangePasswordModalVisible && !isPasswordSet}
+    onRequestClose={handleSetPasswordClose}
+>
             <View style={styles.centeredView}>
                 <View style={styles.modalView}>
-                    <Text style={[styles.modalTitle, textDirectionStyle]}>{t("setPassword")}</Text>
+                    <Text style={styles.modalTitle}>Set Master Password</Text>
 
-                    <Text style={[styles.settingLabel, textDirectionStyle]}>{t("newPassword")}:</Text>
+                    <Text style={styles.settingLabel}>New Password:</Text>
                     <View style={styles.passwordInputContainer}>
                         <TextInput
-                            style={[styles.passwordInput, textDirectionStyle]}
+                            style={styles.passwordInput}
                             value={newMasterPasswordInput}
                             onChangeText={setNewMasterPasswordInput}
                             secureTextEntry={!showNewMasterPassword}
                             placeholder="Enter New Password (min 3 chars)"
                             keyboardType="default"
-                            accessibilityLabel={t("newPassword")}
-                            accessibilityHint="Enter new password, minimum 3 characters"
                         />
-                        <TouchableOpacity style={styles.passwordToggle} onPress={() => setShowNewMasterPassword(!showNewMasterPassword)}
-                            accessible={true}
-                            accessibilityLabel={showNewMasterPassword ? "Hide password" : "Show password"}
-                            accessibilityRole="button"
-                        >
-                            <Ionicons name={showNewMasterPassword ? "eye-off" : "eye"} size={20} color="#888" />
+                        <TouchableOpacity style={styles.passwordToggle} onPress={() => setShowNewMasterPassword(!showNewMasterPassword)}>
+                            <Icon name={showNewMasterPassword ? "eye-off" : "eye"} size={20} color="#888" />
                         </TouchableOpacity>
                     </View>
 
-                    <View style={[styles.buttonRow, containerDirectionStyle]}>
+                    <View style={styles.buttonRow}>
                         <TouchableOpacity
                             style={[styles.modalButton, styles.cancelButton]}
                             onPress={() => {
                                 setIsChangePasswordModalVisible(false);
                                 setNewMasterPasswordInput('');
                             }}
-                            accessible={true}
-                            accessibilityLabel={t("cancel")}
-                            accessibilityRole="button"
                         >
-                            <Text style={styles.closeButtonText}>{t("cancel")}</Text>
+                            <Text style={styles.closeButtonText}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.modalButton, styles.saveButton]}
                             onPress={handleSetPasswordSubmit}
-                            accessible={true}
-                            accessibilityLabel={t("save")}
-                            accessibilityRole="button"
                         >
-                            <Text style={styles.closeButtonText}>{t("save")}</Text>
+                            <Text style={styles.closeButtonText}>Set Password</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -3488,59 +3124,46 @@ const renderSecurityQuestionModal = () => {
 
     const renderChangePasswordModal = () => (
         <Modal
-            animationType={isModalAnimating ? "slide" : "fade"}
-            transparent={true}
-            visible={isChangePasswordModalVisible && isPasswordSet}
-            onRequestClose={handlePasswordChangeClose}
-            accessibilityViewIsModal={true}
-        >
+    animationType={isModalAnimating ? "slide" : "fade"}
+    transparent={true}
+    visible={isChangePasswordModalVisible && isPasswordSet}
+    onRequestClose={handlePasswordChangeClose}
+>
             <View style={styles.centeredView}>
                 <View style={styles.modalView}>
-                    <Text style={[styles.modalTitle, textDirectionStyle]}>{t("changePassword")}</Text>
+                    <Text style={styles.modalTitle}>Change Master Password</Text>
 
-                    <Text style={[styles.settingLabel, textDirectionStyle]}>{t("oldPassword")}:</Text>
+                    <Text style={styles.settingLabel}>Old Password:</Text>
                     <View style={styles.passwordInputContainer}>
                         <TextInput
-                            style={[styles.passwordInput, textDirectionStyle]}
+                            style={styles.passwordInput}
                             value={oldMasterPasswordInput}
                             onChangeText={setOldMasterPasswordInput}
                             secureTextEntry={!showOldMasterPassword}
                             placeholder="Enter Old Password"
                             keyboardType="default"
-                            accessibilityLabel={t("oldPassword")}
-                            accessibilityHint="Enter your current password"
                         />
-                        <TouchableOpacity style={styles.passwordToggle} onPress={() => setShowOldMasterPassword(!showOldMasterPassword)}
-                            accessible={true}
-                            accessibilityLabel={showOldMasterPassword ? "Hide password" : "Show password"}
-                            accessibilityRole="button"
-                        >
-                            <Ionicons name={showOldMasterPassword ? "eye-off" : "eye"} size={20} color="#888" />
+                        <TouchableOpacity style={styles.passwordToggle} onPress={() => setShowOldMasterPassword(!showOldMasterPassword)}>
+                            <Icon name={showOldMasterPassword ? "eye-off" : "eye"} size={20} color="#888" />
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={[styles.settingLabel, textDirectionStyle]}>{t("newPassword")}:</Text>
+                    <Text style={styles.settingLabel}>New Password:</Text>
                     <View style={styles.passwordInputContainer}>
                         <TextInput
-                            style={[styles.passwordInput, textDirectionStyle]}
+                            style={styles.passwordInput}
                             value={newMasterPasswordInput}
                             onChangeText={setNewMasterPasswordInput}
                             secureTextEntry={!showNewMasterPassword}
                             placeholder="Enter New Password (min 3 chars)"
                             keyboardType="default"
-                            accessibilityLabel={t("newPassword")}
-                            accessibilityHint="Enter new password, minimum 3 characters"
                         />
-                        <TouchableOpacity style={styles.passwordToggle} onPress={() => setShowNewMasterPassword(!showNewMasterPassword)}
-                            accessible={true}
-                            accessibilityLabel={showNewMasterPassword ? "Hide password" : "Show password"}
-                            accessibilityRole="button"
-                        >
-                            <Ionicons name={showNewMasterPassword ? "eye-off" : "eye"} size={20} color="#888" />
+                        <TouchableOpacity style={styles.passwordToggle} onPress={() => setShowNewMasterPassword(!showNewMasterPassword)}>
+                            <Icon name={showNewMasterPassword ? "eye-off" : "eye"} size={20} color="#888" />
                         </TouchableOpacity>
                     </View>
 
-                    <View style={[styles.buttonRow, containerDirectionStyle]}>
+                    <View style={styles.buttonRow}>
                         <TouchableOpacity
                             style={[styles.modalButton, styles.cancelButton]}
                             onPress={() => {
@@ -3548,20 +3171,14 @@ const renderSecurityQuestionModal = () => {
                                 setOldMasterPasswordInput('');
                                 setNewMasterPasswordInput('');
                             }}
-                            accessible={true}
-                            accessibilityLabel={t("cancel")}
-                            accessibilityRole="button"
                         >
-                            <Text style={styles.closeButtonText}>{t("cancel")}</Text>
+                            <Text style={styles.closeButtonText}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.modalButton, styles.saveButton]}
                             onPress={handlePasswordChangeSubmit}
-                            accessible={true}
-                            accessibilityLabel={t("save")}
-                            accessibilityRole="button"
                         >
-                            <Text style={styles.closeButtonText}>{t("save")}</Text>
+                            <Text style={styles.closeButtonText}>Change Password</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -3575,40 +3192,13 @@ const renderSecurityQuestionModal = () => {
     transparent={true}
     visible={isSettingsVisible}
     onRequestClose={handleSettingsClose}
-    accessibilityViewIsModal={true}
 >
             <View style={styles.centeredView}>
                 <ScrollView style={styles.fullWidthModal}>
                     <View style={styles.modalView}>
-                        <Text style={[styles.modalTitle, textDirectionStyle]}>{t("appSettings")}</Text>
+                        <Text style={styles.modalTitle}>App Settings</Text>
 
-                        {/* Language Selection */}
-                        <Text style={[styles.settingLabel, textDirectionStyle]}>Language:</Text>
-                        <View style={[styles.colorOptionsContainer, containerDirectionStyle]}>
-                            {['en', 'ar', 'he'].map((lang) => (
-                                <TouchableOpacity
-                                    key={lang}
-                                    style={[
-                                        styles.colorButton, 
-                                        { backgroundColor: language === lang ? '#3498DB' : '#f8f9fa' }, 
-                                        language === lang && { borderWidth: 3, borderColor: '#27AE60' }
-                                    ]}
-                                    onPress={() => {
-                                        const isRTL = lang === 'ar' || lang === 'he';
-                                        saveLanguageAndDirection(lang, isRTL);
-                                    }}
-                                    accessible={true}
-                                    accessibilityLabel={`Select ${lang} language`}
-                                    accessibilityRole="button"
-                                >
-                                    <Text style={[styles.colorButtonText, { color: language === lang ? 'white' : '#333' }]}>
-                                        {lang === 'en' ? 'English' : lang === 'ar' ? 'العربية' : 'עברית'}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-
-                        <Text style={[styles.settingLabel, textDirectionStyle]}>{t("textSize")} ({settings.childTextSize}px):</Text>
+                        <Text style={styles.settingLabel}>Text Size ({settings.childTextSize}px):</Text>
                         <Slider
                             style={styles.slider}
                             minimumValue={10}
@@ -3618,11 +3208,9 @@ const renderSecurityQuestionModal = () => {
                             onValueChange={(value) => setSettings(prev => ({ ...prev, childTextSize: value }))}
                             minimumTrackTintColor="#27AE60"
                             maximumTrackTintColor="#ccc"
-                            accessibilityLabel={t("textSize")}
-                            accessibilityHint="Adjust text size"
                         />
 
-                        <Text style={[styles.settingLabel, textDirectionStyle]}>{t("opacity")} ({settings.opacity * 100}%):</Text>
+                        <Text style={styles.settingLabel}>Opacity ({settings.opacity * 100}%):</Text>
                         <Slider
                             style={styles.slider}
                             minimumValue={0.4}
@@ -3632,12 +3220,10 @@ const renderSecurityQuestionModal = () => {
                             onValueChange={(value) => setSettings(prev => ({ ...prev, opacity: value }))}
                             minimumTrackTintColor="#3498DB"
                             maximumTrackTintColor="#ccc"
-                            accessibilityLabel={t("opacity")}
-                            accessibilityHint="Adjust window opacity"
                         />
 
-                        <Text style={[styles.settingLabel, textDirectionStyle]}>{t("backgroundColor")}:</Text>
-                        <View style={[styles.colorOptionsContainer, containerDirectionStyle]}>
+                        <Text style={styles.settingLabel}>App Background Color:</Text>
+                        <View style={styles.colorOptionsContainer}>
                             {['#fff8dc', '#f0fff0', '#f5f5f5'].map((color, index) => (
                                 <TouchableOpacity
                                     key={color}
@@ -3657,9 +3243,6 @@ const renderSecurityQuestionModal = () => {
                                             childBgColor: color
                                         }));
                                     }}
-                                    accessible={true}
-                                    accessibilityLabel={`Select ${color === '#fff8dc' ? 'Default' : color === '#f0fff0' ? 'Pale Green' : 'Light Gray'} background color`}
-                                    accessibilityRole="button"
                                 >
                                     <Text style={styles.colorButtonText}>
                                         {color === '#fff8dc' ? 'Default' : 
@@ -3671,7 +3254,7 @@ const renderSecurityQuestionModal = () => {
                         
                         {/* স্ক্রলিং গতি কন্ট্রোল */}
                         <View style={styles.settingRow}>
-                            <Text style={[styles.settingLabel, textDirectionStyle]}>{t("scrollSpeed")} ({scrollSpeed.toFixed(1)}x):</Text>
+                            <Text style={styles.settingLabel}>স্ক্রলিং গতি ({scrollSpeed.toFixed(1)}x):</Text>
                             <Slider
                                 style={styles.slider}
                                 minimumValue={0.5}
@@ -3681,20 +3264,18 @@ const renderSecurityQuestionModal = () => {
                                 onValueChange={(value) => setScrollSpeed(value)}
                                 minimumTrackTintColor="#3498DB"
                                 maximumTrackTintColor="#ccc"
-                                accessibilityLabel={t("scrollSpeed")}
-                                accessibilityHint="Adjust scrolling speed"
                             />
-                            <Text style={[styles.toggleDescription, textDirectionStyle]}>
-                                {scrollSpeed < 1.0 ? "Slow speed" : 
-                                 scrollSpeed < 2.0 ? "Normal speed" : "Fast speed"}
+                            <Text style={styles.toggleDescription}>
+                                {scrollSpeed < 1.0 ? "ধীর গতি" : 
+                                 scrollSpeed < 2.0 ? "সাধারণ গতি" : "দ্রুত গতি"}
                             </Text>
                         </View>
                         
                         {/* Quick Launch Notification Toggle */}
                         <View style={styles.settingRow}>
-                            <Text style={[styles.settingLabel, textDirectionStyle]}>{t("quickLaunch")}:</Text>
-                            <View style={[styles.toggleContainer, containerDirectionStyle]}>
-                                <Text style={[styles.toggleLabel, textDirectionStyle]}>
+                            <Text style={styles.settingLabel}>Quick Launch Notification:</Text>
+                            <View style={styles.toggleContainer}>
+                                <Text style={styles.toggleLabel}>
                                     {enableNotification ? "Enabled" : "Disabled"}
                                 </Text>
                                 <TouchableOpacity
@@ -3712,10 +3293,6 @@ const renderSecurityQuestionModal = () => {
                                                 : "Quick launch notification disabled."
                                         );
                                     }}
-                                    accessible={true}
-                                    accessibilityLabel={enableNotification ? "Disable notification" : "Enable notification"}
-                                    accessibilityRole="switch"
-                                    accessibilityState={{checked: enableNotification}}
                                 >
                                     <View style={[
                                         styles.toggleCircle,
@@ -3723,7 +3300,7 @@ const renderSecurityQuestionModal = () => {
                                     ]} />
                                 </TouchableOpacity>
                             </View>
-                            <Text style={[styles.toggleDescription, textDirectionStyle]}>
+                            <Text style={styles.toggleDescription}>
                                 {enableNotification 
                                     ? "Tap notification panel to instantly open Floating Notes."
                                     : "Enable to get quick access from notification panel."
@@ -3733,10 +3310,10 @@ const renderSecurityQuestionModal = () => {
 
                         {/* Dark Mode Toggle */}
                         <View style={styles.settingRow}>
-                            <Text style={[styles.settingLabel, textDirectionStyle]}>{t("darkMode")}:</Text>
-                            <View style={[styles.toggleContainer, containerDirectionStyle]}>
-                                <Text style={[styles.toggleLabel, textDirectionStyle]}>
-                                    {darkModeEnabled ? t("darkMode") : t("lightMode")}
+                            <Text style={styles.settingLabel}>Dark Mode:</Text>
+                            <View style={styles.toggleContainer}>
+                                <Text style={styles.toggleLabel}>
+                                    {darkModeEnabled ? "Enabled" : "Disabled"}
                                 </Text>
                                 <TouchableOpacity
                                     style={[
@@ -3744,10 +3321,6 @@ const renderSecurityQuestionModal = () => {
                                         { backgroundColor: darkModeEnabled ? '#27AE60' : '#ccc' }
                                     ]}
                                     onPress={toggleDarkMode}
-                                    accessible={true}
-                                    accessibilityLabel={darkModeEnabled ? "Disable dark mode" : "Enable dark mode"}
-                                    accessibilityRole="switch"
-                                    accessibilityState={{checked: darkModeEnabled}}
                                 >
                                     <View style={[
                                         styles.toggleCircle,
@@ -3755,7 +3328,7 @@ const renderSecurityQuestionModal = () => {
                                     ]} />
                                 </TouchableOpacity>
                             </View>
-                            <Text style={[styles.toggleDescription, textDirectionStyle]}>
+                            <Text style={styles.toggleDescription}>
                                 {darkModeEnabled 
                                     ? "App is in dark mode with dark theme colors."
                                     : "App is in light mode with default theme colors."
@@ -3765,38 +3338,38 @@ const renderSecurityQuestionModal = () => {
 
                         {/* Security Section */}
                         <View style={styles.securitySection}>
-                            <Text style={[styles.settingLabel, textDirectionStyle]}>{t("securitySettings")}:</Text>
+                            <Text style={styles.settingLabel}>Security Settings:</Text>
                             
-                            <View style={[styles.securityStatusContainer, containerDirectionStyle]}>
+                            <View style={styles.securityStatusContainer}>
                                 <View style={[
                                     styles.securityStatusIndicator,
                                     { backgroundColor: isPasswordSet ? '#27AE60' : '#E74C3C' }
                                 ]}>
-                                    <Ionicons 
+                                    <Icon 
                                         name={isPasswordSet ? "lock-closed" : "lock-open"} 
                                         size={16} 
                                         color="white" 
                                     />
                                 </View>
-                                <Text style={[styles.securityStatusText, textDirectionStyle]}>
+                                <Text style={styles.securityStatusText}>
                                     {isPasswordSet 
                                         ? "Password is set" 
                                         : "Password is not set"}
                                 </Text>
                             </View>
                             
-                            <View style={[styles.securityStatusContainer, containerDirectionStyle]}>
+                            <View style={styles.securityStatusContainer}>
                                 <View style={[
                                     styles.securityStatusIndicator,
                                     { backgroundColor: isSecuritySetupComplete ? '#27AE60' : '#E74C3C' }
                                 ]}>
-                                    <Ionicons 
+                                    <Icon 
                                         name={isSecuritySetupComplete ? "shield-checkmark" : "shield"} 
                                         size={16} 
                                         color="white" 
                                     />
                                 </View>
-                                <Text style={[styles.securityStatusText, textDirectionStyle]}>
+                                <Text style={styles.securityStatusText}>
                                     {isSecuritySetupComplete 
                                         ? "Security question is set up" 
                                         : "Security question is not set up"}
@@ -3806,12 +3379,9 @@ const renderSecurityQuestionModal = () => {
                             <TouchableOpacity 
                                 style={styles.securityButton}
                                 onPress={() => setIsChangePasswordModalVisible(true)}
-                                accessible={true}
-                                accessibilityLabel={isPasswordSet ? t("changePassword") : t("setPassword")}
-                                accessibilityRole="button"
                             >
                                 <Text style={styles.securityButtonText}>
-                                    {isPasswordSet ? t("changePassword") : t("setPassword")}
+                                    {isPasswordSet ? "Change Password" : "Set Password"}
                                 </Text>
                             </TouchableOpacity>
                             
@@ -3825,9 +3395,6 @@ const renderSecurityQuestionModal = () => {
                                         setIsSecurityQuestionSetupModalVisible(true);
                                     }
                                 }}
-                                accessible={true}
-                                accessibilityLabel={isSecuritySetupComplete ? "Update Security Question" : "Setup Security Question"}
-                                accessibilityRole="button"
                             >
                                 <Text style={styles.securityButtonText}>
                                     {isSecuritySetupComplete 
@@ -3840,33 +3407,24 @@ const renderSecurityQuestionModal = () => {
                                 <TouchableOpacity 
                                     style={styles.securityButton}
                                     onPress={handleForgetPassword}
-                                    accessible={true}
-                                    accessibilityLabel="Forgot Password"
-                                    accessibilityRole="button"
                                 >
                                     <Text style={styles.securityButtonText}>Forgot Password?</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
 
-                        <View style={[styles.buttonRow, containerDirectionStyle]}>
+                        <View style={styles.buttonRow}>
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.cancelButton]}
                                 onPress={handleSettingsCancel}
-                                accessible={true}
-                                accessibilityLabel={t("cancel")}
-                                accessibilityRole="button"
                             >
-                                <Text style={styles.closeButtonText}>{t("cancel")}</Text>
+                                <Text style={styles.closeButtonText}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.saveButton]}
                                 onPress={handleSettingsSave}
-                                accessible={true}
-                                accessibilityLabel={t("save")}
-                                accessibilityRole="button"
                             >
-                                <Text style={styles.closeButtonText}>{t("save")}</Text>
+                                <Text style={styles.closeButtonText}>Save Settings</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -3884,55 +3442,42 @@ const renderSecurityQuestionModal = () => {
                 setPasswordModalVisible(false);
                 setActiveNoteId(null);
             }}
-            accessibilityViewIsModal={true}
         >
             <View style={styles.centeredView}>
                 <View style={styles.modalView}>
-                    <Text style={[styles.modalTitle, textDirectionStyle]}>{t("enterPassword")}</Text>
-                    <Text style={[styles.securityDescription, textDirectionStyle]}>To unlock and view this note, enter your master password.</Text>
+                    <Text style={styles.modalTitle}>Enter Master Password</Text>
+                    <Text style={{ marginBottom: 15, textAlign: 'center' }}>To unlock and view this note, enter your master password.</Text>
 
                     <View style={styles.passwordInputContainer}>
                         <TextInput
-                            style={[styles.passwordInput, textDirectionStyle]}
+                            style={styles.passwordInput}
                             value={tempPassword}
                             onChangeText={setTempPassword}
                             secureTextEntry={!showUnlockPassword}
                             placeholder="Master Password"
                             keyboardType="default"
                             onSubmitEditing={handlePasswordSubmit}
-                            accessibilityLabel={t("enterPassword")}
-                            accessibilityHint="Enter your master password to unlock the note"
                         />
-                        <TouchableOpacity style={styles.passwordToggle} onPress={() => setShowUnlockPassword(!showUnlockPassword)}
-                            accessible={true}
-                            accessibilityLabel={showUnlockPassword ? "Hide password" : "Show password"}
-                            accessibilityRole="button"
-                        >
-                            <Ionicons name={showUnlockPassword ? "eye-off" : "eye"} size={20} color="#888" />
+                        <TouchableOpacity style={styles.passwordToggle} onPress={() => setShowUnlockPassword(!showUnlockPassword)}>
+                            <Icon name={showUnlockPassword ? "eye-off" : "eye"} size={20} color="#888" />
                         </TouchableOpacity>
                     </View>
 
-                    <View style={[styles.buttonRow, containerDirectionStyle]}>
+                    <View style={styles.buttonRow}>
                         <TouchableOpacity
                             style={[styles.modalButton, styles.cancelButton]}
                             onPress={() => {
                                 setPasswordModalVisible(false);
                                 setActiveNoteId(null);
                             }}
-                            accessible={true}
-                            accessibilityLabel={t("cancel")}
-                            accessibilityRole="button"
                         >
-                            <Text style={styles.closeButtonText}>{t("cancel")}</Text>
+                            <Text style={styles.closeButtonText}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.modalButton, styles.saveButton]}
                             onPress={handlePasswordSubmit}
-                            accessible={true}
-                            accessibilityLabel={t("unlock")}
-                            accessibilityRole="button"
                         >
-                            <Text style={styles.closeButtonText}>{t("unlock")}</Text>
+                            <Text style={styles.closeButtonText}>Unlock</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -3948,7 +3493,7 @@ const renderSecurityQuestionModal = () => {
     const isSmallHeight = currentNoteHeight < 220;
     
     return (
-        <View style={[styles.listItemWrapper, containerDirectionStyle]}>
+        <View style={styles.listItemWrapper}>
              {/* Up/Down Buttons - ছোট উচ্চতায় লুকানো */}
             {!isSmallHeight && (
                 <View style={styles.sortButtonsContainer}>
@@ -3956,23 +3501,15 @@ const renderSecurityQuestionModal = () => {
                         onPress={() => handleMoveNote(item.id, 'up')}
                         style={[styles.sortButton, index === 0 && styles.disabledSortButton]}
                         disabled={index === 0}
-                        accessible={true}
-                        accessibilityLabel="Move note up"
-                        accessibilityRole="button"
-                        accessibilityState={{disabled: index === 0}}
                     >
-                        <Ionicons name="arrow-up" size={16} color="#444" />
+                        <Icon name="arrow-up" size={16} color="#444" />
                     </TouchableOpacity>
                     <TouchableOpacity 
                         onPress={() => handleMoveNote(item.id, 'down')}
                         style={[styles.sortButton, index === notes.length - 1 && styles.disabledSortButton]}
                         disabled={index === notes.length - 1}
-                        accessible={true}
-                        accessibilityLabel="Move note down"
-                        accessibilityRole="button"
-                        accessibilityState={{disabled: index === notes.length - 1}}
                     >
-                        <Ionicons name="arrow-down" size={16} color="#444" />
+                        <Icon name="arrow-down" size={16} color="#444" />
                     </TouchableOpacity>
                 </View>
             )}
@@ -3984,26 +3521,21 @@ const renderSecurityQuestionModal = () => {
                     isSmallHeight && styles.smallHeightListItem
                 ]}
                 onPress={() => handleOpenNote(item.id)}
-                accessible={true}
-                accessibilityLabel={`${item.title}, ${isLocked ? 'Locked note' : 'Unlocked note'}`}
-                accessibilityHint={t("doubleTapToOpen")}
-                accessibilityRole="button"
-                onAccessibilityTap={() => handleOpenNote(item.id)}
             >
                 <View style={[styles.smallLockIconContainer, { backgroundColor: isLocked ? '#C0392B' : '#27AE60' }]}>
-                    <Ionicons name={isLocked ? "lock-closed" : "lock-open"} size={10} color="white" />
+                    <Icon name={isLocked ? "lock-closed" : "lock-open"} size={10} color="white" />
                 </View>
-                <Text style={[styles.listItemTitle, textDirectionStyle]} numberOfLines={1}>
+                <Text style={styles.listItemTitle} numberOfLines={1}>
                     {item.title}
                 </Text>
                 
                 {/* ছোট উচ্চতায় প্রিভিউ দেখাবে না */}
                 {!isSmallHeight && (
                     <>
-                        <Text style={[styles.listItemPreview, textDirectionStyle]} numberOfLines={1}>
+                        <Text style={styles.listItemPreview} numberOfLines={1}>
                             {item.preview}
                         </Text>
-                        <Text style={[styles.listItemPreview, textDirectionStyle, { fontSize: 9, marginTop: 3 }]}>
+                        <Text style={[styles.listItemPreview, { fontSize: 9, marginTop: 3 }]}>
                             Last Edited: {new Date(item.lastEdited).toLocaleString()}
                         </Text>
                     </>
@@ -4015,12 +3547,8 @@ const renderSecurityQuestionModal = () => {
                 <TouchableOpacity 
                     style={styles.deleteButtonAbsolute}
                     onPress={() => handleDeleteNote(item.id)}
-                    accessible={true}
-                    accessibilityLabel={`Delete ${item.title}`}
-                    accessibilityRole="button"
-                    accessibilityHint="Double tap to delete this note"
                 >
-                    <Ionicons name="close-circle-outline" size={20} color="#C0392B" />
+                    <Icon name="close-circle-outline" size={20} color="#C0392B" />
                 </TouchableOpacity>
             )}
         </View>
@@ -4031,50 +3559,34 @@ const renderSecurityQuestionModal = () => {
         <View style={{ flex: 1, backgroundColor: settings.mainBgColor, borderRadius: 12 }}>
             <View style={[styles.topBarContainer, { backgroundColor: settings.topBarColor }]}>
                 <View {...noteResponder.panHandlers} style={styles.dragArea}> 
-                    <Text style={[styles.noteTitle, textDirectionStyle]}>{t("noteList")} ({notes.length})</Text>
+                    <Text style={styles.noteTitle}>Note List ({notes.length})</Text>
                 </View>
 
                 {/* Settings Button */}
                 <TouchableWithoutFeedback onPress={() => setIsSettingsVisible(true)}>
-                    <View style={styles.iconButton}
-                        accessible={true}
-                        accessibilityLabel={t("settings")}
-                        accessibilityRole="button"
-                    >
-                        <Ionicons name="settings-outline" size={22} color={settings.iconColor} />
+                    <View style={styles.iconButton}>
+                        <Icon name="settings-outline" size={22} color={settings.iconColor} />
                     </View>
                 </TouchableWithoutFeedback>
                 
                 {/* Create New Note Button */}
                 <TouchableWithoutFeedback onPress={handleCreateNewNote}>
-                    <View style={styles.iconButton}
-                        accessible={true}
-                        accessibilityLabel={t("newNote")}
-                        accessibilityRole="button"
-                    >
-                        <Ionicons name="add-circle-outline" size={22} color={settings.iconColor} />
+                    <View style={styles.iconButton}>
+                        <Icon name="add-circle-outline" size={22} color={settings.iconColor} />
                     </View>
                 </TouchableWithoutFeedback>
                 
                 {/* Minimize Button */}
                 <TouchableWithoutFeedback onPress={handleMinimizeToBubble}>
-                    <View style={styles.iconButton}
-                        accessible={true}
-                        accessibilityLabel={t("minimize")}
-                        accessibilityRole="button"
-                    >
-                        <Ionicons name="remove-circle-outline" size={22} color={settings.iconColor} />
+                    <View style={styles.iconButton}>
+                        <Icon name="remove-circle-outline" size={22} color={settings.iconColor} />
                     </View>
                 </TouchableWithoutFeedback>
                 
                 {/* Close Button */}
                 <TouchableWithoutFeedback onPress={handleDestroy}>
-                    <View style={styles.iconButton}
-                        accessible={true}
-                        accessibilityLabel={t("close")}
-                        accessibilityRole="button"
-                    >
-                        <Ionicons name="close-circle" size={22} color={settings.closeIconColor} />
+                    <View style={styles.iconButton}>
+                        <Icon name="close-circle" size={22} color={settings.closeIconColor} />
                     </View>
                 </TouchableWithoutFeedback>
             </View>
@@ -4085,21 +3597,10 @@ const renderSecurityQuestionModal = () => {
                 keyExtractor={item => item.id}
                 contentContainerStyle={styles.listContentContainer}
                 ItemSeparatorComponent={ItemSeparator}
-                initialNumToRender={10}
-                maxToRenderPerBatch={15}
-                windowSize={21}
-                removeClippedSubviews={true}
-                accessibilityLabel={t("noteList")}
-                accessibilityRole="menu"
             />
 
-            <Animated.View {...resizeResponder.panHandlers} style={[styles.resizeHandle, {backgroundColor: settings.bottomBarColor}]}
-                accessible={true}
-                accessibilityLabel="Resize handle"
-                accessibilityRole="adjustable"
-                accessibilityHint="Drag to resize the note window"
-            >
-                <Ionicons name="resize-outline" size={10} color={settings.iconColor} />
+            <Animated.View {...resizeResponder.panHandlers} style={[styles.resizeHandle, {backgroundColor: settings.bottomBarColor}]}>
+                <Icon name="resize-outline" size={10} color={settings.iconColor} />
             </Animated.View>
         </View>
     );
@@ -4130,24 +3631,16 @@ const renderSecurityQuestionModal = () => {
                     onScrollBeginDrag={handleScrollBeginDrag}
                     onScrollEndDrag={handleScrollEndDrag}
                     onMomentumScrollEnd={handleMomentumScrollEnd}
-                    accessibilityLabel={t("noteContent")}
-                    accessibilityRole="text"
                 >
                     <TouchableOpacity
                         activeOpacity={1} 
                         onPress={!isNoteDisabled ? handlePressInViewMode : undefined} 
                         disabled={isNoteDisabled}
-                        accessible={true}
-                        accessibilityLabel={isNoteDisabled ? t("noteLocked") : t("noteContent")}
-                        accessibilityHint={!isNoteDisabled ? t("doubleTapToEdit") : ""}
-                        accessibilityRole={isNoteDisabled ? "text" : "button"}
-                        onAccessibilityTap={!isNoteDisabled ? handlePressInViewMode : undefined}
                     >
                         <View style={{ flexGrow: 1, minHeight: '100%' }}> 
                             <Text 
                                 style={[
                                     styles.viewText, 
-                                    textDirectionStyle,
                                     { 
                                         fontSize: settings.childTextSize, 
                                         color: settings.childTextColor,
@@ -4155,7 +3648,7 @@ const renderSecurityQuestionModal = () => {
                                     }
                                 ]}
                             >
-                                {history.current || (isNoteDisabled ? t("noteLocked") : "")}
+                                {history.current || (isNoteDisabled ? "This note is locked." : "")}
                             </Text>
                         </View>
                     </TouchableOpacity>
@@ -4169,8 +3662,6 @@ const renderSecurityQuestionModal = () => {
             <View 
                 style={{ flex: 1, position: 'relative' }}
                 {...textSelectionResponder.panHandlers}
-                accessibilityLabel={t("editMode")}
-                accessibilityRole="text"
             >
                 <ScrollView
                     ref={editScrollViewRef}
@@ -4189,8 +3680,6 @@ const renderSecurityQuestionModal = () => {
                     onScrollBeginDrag={handleScrollBeginDrag}
                     onScrollEndDrag={handleScrollEndDrag}
                     onMomentumScrollEnd={handleMomentumScrollEnd}
-                    accessibilityLabel={t("noteContent")}
-                    accessibilityRole="text"
                 >
                     <TextInput
                         ref={textInputRef}
@@ -4199,7 +3688,6 @@ const renderSecurityQuestionModal = () => {
                         onChangeText={updateActiveNoteContent}
                         style={[
                             styles.input, 
-                            textDirectionStyle,
                             { 
                                 fontSize: settings.childTextSize, 
                                 color: settings.childTextColor,
@@ -4209,7 +3697,7 @@ const renderSecurityQuestionModal = () => {
                             }
                         ]}
                         multiline
-                        placeholder={isNoteDisabled ? t("noteLocked") : ""}
+                        placeholder={isNoteDisabled ? "This note is locked and cannot be edited or shared." : ""}
                         editable={!isNoteDisabled} 
                         
                         scrollEnabled={false}
@@ -4241,10 +3729,6 @@ const renderSecurityQuestionModal = () => {
 
                         contextMenuHidden={false}
                         selectTextOnFocus={false}
-                        accessibilityLabel={t("noteContent")}
-                        accessibilityHint={!isNoteDisabled ? "Edit note content" : t("noteLocked")}
-                        accessibilityRole="text"
-                        accessibilityState={{disabled: isNoteDisabled}}
                     />
                 </ScrollView>
             </View>
@@ -4255,41 +3739,29 @@ const renderSecurityQuestionModal = () => {
                 {/* Top Bar */}
                 <View style={[styles.topBarContainer, { backgroundColor: settings.topBarColor }]}>
                     <View {...noteResponder.panHandlers} style={styles.dragArea}> 
-                        <Text style={[styles.noteTitle, textDirectionStyle]} numberOfLines={1}>
-                            {activeNote.title || t("untitledNote")}
+                        <Text style={styles.noteTitle} numberOfLines={1}>
+                            {activeNote.title || 'Untitled Note'}
                             {isSaving && <Text style={styles.savingText}> (Saving...)</Text>}
-                            {isViewingMode ? <Text style={styles.savingText}> ({t("view")} Mode)</Text> : <Text style={styles.savingText}> ({t("edit")} Mode)</Text>} 
+                            {isViewingMode ? <Text style={styles.savingText}> (View Mode)</Text> : <Text style={styles.savingText}> (Edit Mode)</Text>} 
                         </Text>
                     </View>
 
                     {/* Back, Minimize, Close Buttons */}
                     <TouchableWithoutFeedback onPress={() => handleClose(false, true)}>
-                        <View style={styles.iconButton}
-                            accessible={true}
-                            accessibilityLabel={t("back")}
-                            accessibilityRole="button"
-                        >
-                            <Ionicons name="arrow-back-circle-outline" size={22} color={settings.iconColor} />
+                        <View style={styles.iconButton}>
+                            <Icon name="arrow-back-circle-outline" size={22} color={settings.iconColor} />
                         </View>
                     </TouchableWithoutFeedback>
                     
                     <TouchableWithoutFeedback onPress={handleMinimizeToBubble}>
-                        <View style={styles.iconButton}
-                            accessible={true}
-                            accessibilityLabel={t("minimize")}
-                            accessibilityRole="button"
-                        >
-                            <Ionicons name="remove-circle-outline" size={22} color={settings.iconColor} />
+                        <View style={styles.iconButton}>
+                            <Icon name="remove-circle-outline" size={22} color={settings.iconColor} />
                         </View>
                     </TouchableWithoutFeedback>
                     
                     <TouchableWithoutFeedback onPress={handleDestroy}>
-                        <View style={styles.iconButton}
-                            accessible={true}
-                            accessibilityLabel={t("close")}
-                            accessibilityRole="button"
-                        >
-                            <Ionicons name="close-circle" size={22} color={settings.closeIconColor} />
+                        <View style={styles.iconButton}>
+                            <Icon name="close-circle" size={22} color={settings.closeIconColor} />
                         </View>
                     </TouchableWithoutFeedback>
                 </View>
@@ -4306,13 +3778,8 @@ const renderSecurityQuestionModal = () => {
         onPress={handleUndo}
         disabled={isNoteDisabled}
     >
-        <View style={styles.toolbarButton}
-            accessible={true}
-            accessibilityLabel={t("undo")}
-            accessibilityRole="button"
-            accessibilityState={{disabled: isNoteDisabled}}
-        >
-            <Ionicons 
+        <View style={styles.toolbarButton}>
+            <Icon 
                 name="arrow-undo-outline" 
                 size={16} 
                 color={!isNoteDisabled ? settings.iconColor : "#aaa"} 
@@ -4325,13 +3792,8 @@ const renderSecurityQuestionModal = () => {
         onPress={handleRedo}
         disabled={isNoteDisabled}
     >
-        <View style={styles.toolbarButton}
-            accessible={true}
-            accessibilityLabel={t("redo")}
-            accessibilityRole="button"
-            accessibilityState={{disabled: isNoteDisabled}}
-        >
-            <Ionicons 
+        <View style={styles.toolbarButton}>
+            <Icon 
                 name="arrow-redo-outline" 
                 size={16} 
                 color={!isNoteDisabled ? settings.iconColor : "#aaa"} 
@@ -4344,13 +3806,8 @@ const renderSecurityQuestionModal = () => {
         onPress={handleCopy} 
         disabled={isNoteDisabled}
     >
-        <View style={styles.toolbarButton}
-            accessible={true}
-            accessibilityLabel={t("copy")}
-            accessibilityRole="button"
-            accessibilityState={{disabled: isNoteDisabled}}
-        >
-            <Ionicons 
+        <View style={styles.toolbarButton}>
+            <Icon 
                 name="copy-outline" 
                 size={16} 
                 color={!isNoteDisabled ? settings.iconColor : "#aaa"} 
@@ -4363,13 +3820,8 @@ const renderSecurityQuestionModal = () => {
         onPress={handlePaste} 
         disabled={isNoteDisabled}
     >
-        <View style={styles.toolbarButton}
-            accessible={true}
-            accessibilityLabel={t("paste")}
-            accessibilityRole="button"
-            accessibilityState={{disabled: isNoteDisabled}}
-        >
-            <Ionicons 
+        <View style={styles.toolbarButton}>
+            <Icon 
                 name="clipboard-outline" 
                 size={16} 
                 color={!isNoteDisabled ? settings.iconColor : "#aaa"} 
@@ -4382,13 +3834,8 @@ const renderSecurityQuestionModal = () => {
         onPress={() => activeNote && toggleNoteLock(activeNote.id)}
         disabled={isNoteDisabled}
     >
-        <View style={styles.toolbarButton}
-            accessible={true}
-            accessibilityLabel={activeNote?.isLocked ? t("unlockNote") : t("lockNote")}
-            accessibilityRole="button"
-            accessibilityState={{disabled: isNoteDisabled}}
-        >
-            <Ionicons 
+        <View style={styles.toolbarButton}>
+            <Icon 
                 name={activeNote?.isLocked ? "lock-closed" : "lock-open"} 
                 size={16} 
                 color={!isNoteDisabled ? settings.iconColor : "#aaa"} 
@@ -4401,13 +3848,8 @@ const renderSecurityQuestionModal = () => {
         onPress={() => activeNote && handleDeleteNote(activeNote.id)} 
         disabled={isNoteDisabled}
     >
-        <View style={styles.toolbarButton}
-            accessible={true}
-            accessibilityLabel={t("delete")}
-            accessibilityRole="button"
-            accessibilityState={{disabled: isNoteDisabled}}
-        >
-            <Ionicons 
+        <View style={styles.toolbarButton}>
+            <Icon 
                 name="trash-outline" 
                 size={16} 
                 color={!isNoteDisabled ? "#C0392B" : "#aaa"} 
@@ -4420,13 +3862,8 @@ const renderSecurityQuestionModal = () => {
         onPress={handleShare}
         disabled={isNoteDisabled}
     >
-        <View style={styles.toolbarButton}
-            accessible={true}
-            accessibilityLabel={t("share")}
-            accessibilityRole="button"
-            accessibilityState={{disabled: isNoteDisabled}}
-        >
-            <Ionicons 
+        <View style={styles.toolbarButton}>
+            <Icon 
                 name="share-social-outline" 
                 size={16} 
                 color={!isNoteDisabled ? settings.iconColor : "#aaa"} 
@@ -4439,13 +3876,8 @@ const renderSecurityQuestionModal = () => {
         onPress={handleToggleFullScreen}
         disabled={isNoteDisabled}
     >
-        <View style={styles.toolbarButton}
-            accessible={true}
-            accessibilityLabel={isFullScreen ? "Exit full screen" : "Enter full screen"}
-            accessibilityRole="button"
-            accessibilityState={{disabled: isNoteDisabled}}
-        >
-            <Ionicons 
+        <View style={styles.toolbarButton}>
+            <Icon 
                 name={isFullScreen ? "contract-outline" : "expand-outline"} 
                 size={16} 
                 color={!isNoteDisabled ? settings.iconColor : "#aaa"} 
@@ -4454,13 +3886,8 @@ const renderSecurityQuestionModal = () => {
     </TouchableWithoutFeedback>
 </View>
 
-                <Animated.View {...resizeResponder.panHandlers} style={[styles.resizeHandle, {backgroundColor: settings.bottomBarColor}]}
-                    accessible={true}
-                    accessibilityLabel="Resize handle"
-                    accessibilityRole="adjustable"
-                    accessibilityHint="Drag to resize the note window"
-                >
-                    <Ionicons name="resize-outline" size={10} color={settings.iconColor} />
+                <Animated.View {...resizeResponder.panHandlers} style={[styles.resizeHandle, {backgroundColor: settings.bottomBarColor}]}>
+                    <Icon name="resize-outline" size={10} color={settings.iconColor} />
                 </Animated.View>
             </View>
         );
@@ -4491,9 +3918,6 @@ const renderSecurityQuestionModal = () => {
                             overflow: 'hidden' 
                         },
                     ]}
-                    accessible={true}
-                    accessibilityLabel="Floating Note Window"
-                    accessibilityRole="none"
                 >
                     {renderNoteContent()}
                 </Animated.View>
@@ -4524,20 +3948,12 @@ const styles = StyleSheet.create({
         justifyContent: "center", 
         alignItems: "center", 
         elevation: 6,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
     },
     note: {
         position: "absolute",
         backgroundColor: "#fff8dc",
         borderRadius: 12,
         elevation: 10,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
     },
     topBarContainer: {
         height: 35,
@@ -4570,7 +3986,6 @@ const styles = StyleSheet.create({
         height: 35,
         justifyContent: 'center',
         alignItems: 'center',
-        minWidth: 35,
     },
     listContentContainer: {
         paddingTop: 6,
@@ -4598,10 +4013,6 @@ const styles = StyleSheet.create({
         position: 'relative',
         justifyContent: 'center', 
         marginHorizontal: 2,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
     },
     smallLockIconContainer: { 
         position: 'absolute',
@@ -4697,10 +4108,6 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         elevation: 5,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
     },
     bottomToolbar: {
         flexDirection: 'row',
@@ -4842,10 +4249,6 @@ const styles = StyleSheet.create({
         padding: 10,
         elevation: 2,
         marginHorizontal: 5,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
     },
     saveButton: {
         backgroundColor: "#27AE60",
@@ -4913,10 +4316,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 2,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
     },
     colorButtonText: {
         fontSize: 12,
@@ -4934,10 +4333,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         zIndex: 1000,
         elevation: 3,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
     },
     scrollIndicatorContent: {
         alignItems: 'center',
@@ -5005,10 +4400,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginVertical: 5,
         elevation: 2,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
     },
     securityButtonText: {
         color: 'white',
