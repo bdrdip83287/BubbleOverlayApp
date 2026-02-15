@@ -5068,13 +5068,4 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: 'bold',
     },
-});import React from 'react';
-import { View, Text } from 'react-native';
-
-export default function App() {
-  return (
-    <View style={{flex:1,justifyContent:'center',alignItems:'center'}}>
-      <Text>Bubble Overlay Running</Text>
-    </View>
-  );
-}
+});

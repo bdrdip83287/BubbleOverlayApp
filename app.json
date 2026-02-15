@@ -1,4 +1,7 @@
 {
   "name": "BubbleOverlayApp",
-  "displayName": "BubbleOverlayApp"
+  "displayName": "BubbleOverlayApp",
+  "plugins": [
+    "expo-sqlite"
+  ]
 }
