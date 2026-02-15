@@ -23,6 +23,11 @@ jobs:
         run: |
           npm install
 
+      - name: Auto fix jcenter issue
+        run: |
+          find . -name "*.gradle" -type f -exec sed -i 's/jcenter()/mavenCentral()/g' {} +
+
+
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
