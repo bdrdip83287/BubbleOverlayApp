@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout
+      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Setup Node
+      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -24,13 +24,14 @@ jobs:
       # Install dependencies
       - name: Install dependencies
         run: |
+          rm -rf node_modules
           npm install
-          npm install expo expo-modules-core
+          npx expo install expo-modules-core
 
       # Expo prebuild (ANDROID ONLY)
       - name: Expo prebuild (Android only)
         run: |
-          EXPO_NO_IOS=1 npx expo prebuild --platform android
+          npx expo prebuild --clean --platform android
 
       # Setup Java
       - name: Setup Java
@@ -39,7 +40,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # Permission
+      # Grant gradlew permission
       - name: Grant gradlew permission
         run: chmod +x android/gradlew
 
@@ -55,4 +56,3 @@ jobs:
         with:
           name: app-release
           path: android/app/build/outputs/apk/release/app-release.apk
-
