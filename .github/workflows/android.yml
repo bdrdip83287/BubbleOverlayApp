@@ -4,49 +4,50 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+  workflow_dispatch:  # allows manual trigger
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Node
+      # 2️⃣ Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18  # আপনার project node version
 
-      # Install dependencies (VERY IMPORTANT)
-      - name: Install dependencies
-        run: |
-          npm ci
+      # 3️⃣ Install dependencies
+      - name: Install npm dependencies
+        run: npm install
 
-      # Ensure Expo modules sync
+      # 4️⃣ Expo prebuild (Bare workflow autolinking)
       - name: Expo prebuild sync
-        run: |
-          npx expo prebuild --non-interactive || true
+        run: npx expo prebuild --non-interactive
 
-      # Java
+      # 5️⃣ Setup Java 17 (Gradle compatible)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # 6️⃣ Make gradlew executable
       - name: Grant gradlew permission
         run: chmod +x android/gradlew
 
-      # Build
+      # 7️⃣ Build Release APK
       - name: Build Release APK
         run: |
           cd android
+          ./gradlew clean
           ./gradlew assembleRelease
 
-      # Upload
+      # 8️⃣ Upload APK artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
