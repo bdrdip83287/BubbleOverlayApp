@@ -8,6 +8,9 @@ on:
 
 jobs:
   build:
+- name: Install dependencies
+  run: |
+    npm install
     runs-on: ubuntu-latest
 
     steps:
@@ -22,8 +25,9 @@ jobs:
 
       # Install dependencies (VERY IMPORTANT)
       - name: Install dependencies
-        run: |
-          npm ci
+  run: |
+    npm install
+
 
       # Ensure Expo modules sync
       - name: Expo prebuild sync
