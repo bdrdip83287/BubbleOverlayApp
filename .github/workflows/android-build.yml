@@ -10,25 +10,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️⃣ Setup Node
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # 3️⃣ Install dependencies
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
+      # 4️⃣ Expo prebuild (Android only)
+      - name: Expo prebuild sync
+        run: |
+          # Skip iOS completely
+          EXPO_SKIP_IOS_BUILD=true npx expo prebuild
+
+      # 5️⃣ Give gradlew permission
       - name: Give gradlew permission
         run: chmod +x android/gradlew
 
+      # 6️⃣ Build Release APK
       - name: Build Release APK
         run: |
           cd android
+          ./gradlew clean
           ./gradlew assembleRelease
 
+      # 7️⃣ Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
