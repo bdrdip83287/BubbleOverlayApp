@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20  # আপনার project এর node version
+          node-version: 18  # আপনার project এর node version
 
       # 3️⃣ Install dependencies
       - name: Install npm dependencies
@@ -27,7 +27,7 @@ jobs:
 
       # 4️⃣ Expo prebuild (Android only)
       - name: Expo prebuild sync (Android only)
-        run: CI=1 npx expo prebuild
+        run: EXPO_NO_IOS=1 npx expo prebuild
 
       # 5️⃣ Setup Java 17 (Gradle compatible)
       - name: Setup Java
@@ -53,3 +53,4 @@ jobs:
         with:
           name: app-release
           path: android/app/build/outputs/apk/release/app-release.apk
+
