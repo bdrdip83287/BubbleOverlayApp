@@ -23,11 +23,14 @@ jobs:
 
       # Install dependencies
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install expo expo-modules-core
 
-      # Prebuild Android only (NO IOS)
+      # Expo prebuild (ANDROID ONLY)
       - name: Expo prebuild (Android only)
-        run: npx expo prebuild --platform android --non-interactive
+        run: |
+          EXPO_NO_IOS=1 npx expo prebuild --platform android
 
       # Setup Java
       - name: Setup Java
@@ -52,3 +55,4 @@ jobs:
         with:
           name: app-release
           path: android/app/build/outputs/apk/release/app-release.apk
+
