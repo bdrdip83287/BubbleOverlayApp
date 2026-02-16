@@ -1,4 +1,4 @@
-package com.bubbleoverlayapp
+package com.dip83287.bubbleoverlayapp
 
 import android.app.Application
 import com.facebook.react.PackageList

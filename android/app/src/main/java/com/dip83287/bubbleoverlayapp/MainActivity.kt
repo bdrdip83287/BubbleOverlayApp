@@ -1,4 +1,4 @@
-package com.bubbleoverlayapp
+package com.dip83287.bubbleoverlayapp
 
 import com.facebook.react.ReactActivity
 

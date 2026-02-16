@@ -3,5 +3,8 @@
   "displayName": "BubbleOverlayApp",
   "plugins": [
     "expo-sqlite"
-  ]
+  ],
+  "android": {
+    "package": "com.dip83287.bubbleoverlayapp"
+  }
 }
