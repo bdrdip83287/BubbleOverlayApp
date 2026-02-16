@@ -27,7 +27,7 @@ jobs:
 
       # 4️⃣ Expo prebuild (Android-only)
       - name: Expo prebuild sync (Android-only)
-        run: EXPO_SKIP_IOS_BUILD=true npx expo prebuild
+        run: CI=1 npx expo prebuild --platform android
 
       # 5️⃣ Setup Java 17 (Gradle compatible)
       - name: Setup Java
@@ -53,4 +53,3 @@ jobs:
         with:
           name: app-release
           path: android/app/build/outputs/apk/release/app-release.apk
-
