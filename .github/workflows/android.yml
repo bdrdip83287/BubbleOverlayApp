@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18  # আপনার project node version
+          node-version: 20  # আপনার project node version
 
       # 3️⃣ Install dependencies
       - name: Install npm dependencies
