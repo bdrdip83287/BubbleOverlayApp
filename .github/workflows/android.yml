@@ -8,50 +8,45 @@ on:
 
 jobs:
   build:
-- name: Install dependencies
-  run: |
-    npm install
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Node
+      # Setup Node
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # Install dependencies (VERY IMPORTANT)
+      # Install dependencies
       - name: Install dependencies
-  run: |
-    npm install
+        run: npm install
 
-
-      # Ensure Expo modules sync
+      # Prebuild Android only (NO IOS)
       - name: Expo prebuild (Android only)
-  run: |
-    EXPO_NO_IOS=1 npx expo prebuild --platform android
+        run: npx expo prebuild --platform android --non-interactive
 
-
-      # Java
+      # Setup Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: 17
 
+      # Permission
       - name: Grant gradlew permission
         run: chmod +x android/gradlew
 
-      # Build
+      # Build APK
       - name: Build Release APK
         run: |
           cd android
           ./gradlew assembleRelease
 
-      # Upload
+      # Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
