@@ -20,8 +20,8 @@ buildscript {
 
 apply plugin: "com.facebook.react.rootproject"
 
-allprojects {
-    configurations.all {
+subprojects {
+    configurations.configureEach {
 
         // 🔥 Remove old Android Support Libraries globally
         exclude group: "com.android.support"
