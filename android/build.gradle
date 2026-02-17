@@ -20,18 +20,16 @@ buildscript {
 
 apply plugin: "com.facebook.react.rootproject"
 
+/**
+ * 🔥 FORCE replace old Android Support Library with AndroidX globally
+ */
 subprojects {
-    configurations.configureEach {
-
-        // 🔥 Remove old Android Support Libraries globally
-        exclude group: "com.android.support"
-        exclude group: "com.android.support", module: "support-compat"
-
-        // 🔥 Force AndroidX instead of support libs
-        resolutionStrategy.eachDependency { details ->
-            if (details.requested.group == "com.android.support") {
-                details.useTarget "androidx.core:core:1.13.1"
-            }
+    configurations.all {
+        resolutionStrategy.dependencySubstitution {
+            substitute module("com.android.support:support-compat") using module("androidx.core:core:1.13.1")
+            substitute module("com.android.support:support-v4") using module("androidx.core:core:1.13.1")
         }
+
+        exclude group: "com.android.support"
     }
 }
