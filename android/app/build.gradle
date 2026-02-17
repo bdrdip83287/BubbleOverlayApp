@@ -52,6 +52,13 @@ android {
 dependencies {
     implementation("com.facebook.react:react-android")
 
+    // 🔥 FIX duplicate class
+    implementation("androidx.core:core:1.13.1")
+
+    implementation("com.android.support:support-compat:27.1.1") {
+        exclude group: "com.android.support"
+    }
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
@@ -60,7 +67,7 @@ dependencies {
 }
 
 /**
- * 🔥 FIX: Remove old Android Support Library to prevent duplicate class error
+ * 🔥 Remove old Android Support Library globally
  */
 configurations.all {
     exclude group: 'com.android.support'
