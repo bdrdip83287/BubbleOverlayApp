@@ -19,3 +19,15 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+subprojects {
+    configurations.all {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'com.android.support') {
+                details.useTarget group: 'androidx.core', name: 'core', version: '1.13.1'
+            }
+        }
+        exclude group: 'com.android.support'
+        exclude group: 'com.android.support', module: 'support-compat'
+    }
+}
