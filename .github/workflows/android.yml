@@ -9,50 +9,47 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
-      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
+          cache: 'npm'
 
-      # Install dependencies
       - name: Install dependencies
         run: |
-          rm -rf node_modules
-          npm install
-          npx expo install expo-modules-core
+          npm ci || npm install
+          npx expo install expo-modules-core -- --fix
 
-      # Expo prebuild (ANDROID ONLY)
-      - name: Expo prebuild (Android only)
-        run: |
-          npx expo prebuild --clean --platform android
-
-      # Setup Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
+          distribution: 'temurin'
+          java-version: '17'
 
-      # Grant gradlew permission
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Grant gradlew permission
         run: chmod +x android/gradlew
 
-      # Build APK
+      - name: Clean build
+        run: |
+          cd android
+          ./gradlew clean
+
       - name: Build Release APK
         run: |
           cd android
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
-      # Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release
           path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
