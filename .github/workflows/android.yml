@@ -25,14 +25,16 @@ jobs:
           rm -rf node_modules package-lock.json
           npm install
           # Ensure expo-modules-core is installed
-          npx expo install expo-modules-core --fix
+          npm install expo-modules-core@~1.12.0
 
-      - name: Verify autolinking file
+      - name: Verify and create autolinking file
         run: |
-          ls -la node_modules/expo-modules-core/scripts/ || echo "Directory not found"
-          # Create directory if missing
           mkdir -p node_modules/expo-modules-core/scripts/
-          touch node_modules/expo-modules-core/scripts/autolinking.gradle
+          if [ ! -f node_modules/expo-modules-core/scripts/autolinking.gradle ]; then
+            echo "// Autolinking configuration" > node_modules/expo-modules-core/scripts/autolinking.gradle
+            echo "gradle.ext.expoRoot = project.rootProject.projectDir.parentFile" >> node_modules/expo-modules-core/scripts/autolinking.gradle
+            echo "gradle.ext.expoModuleRegistry = [:]" >> node_modules/expo-modules-core/scripts/autolinking.gradle
+          fi
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -47,10 +49,14 @@ jobs:
       - name: Grant gradlew permission
         run: chmod +x android/gradlew
 
-      - name: Clean and Build
+      - name: Clean
         run: |
           cd android
           ./gradlew clean
+
+      - name: Build Release APK
+        run: |
+          cd android
           ./gradlew assembleRelease --stacktrace --no-daemon
 
       - name: Upload APK
@@ -58,4 +64,3 @@ jobs:
         with:
           name: app-release
           path: android/app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error

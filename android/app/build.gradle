@@ -7,31 +7,28 @@ react {
 }
 
 android {
-    compileSdkVersion 35
-    ndkVersion "27.1.12297006"
+    compileSdkVersion 34
+    ndkVersion "26.1.10909125"
 
     defaultConfig {
         applicationId "com.bubbleoverlayapp"
         minSdkVersion 24
-        targetSdkVersion 35
+        targetSdkVersion 34
         versionCode 1
         versionName "1.0"
     }
 
-    signingConfigs {
-        release {
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                storeFile file(MYAPP_UPLOAD_STORE_FILE)
-                storePassword MYAPP_UPLOAD_STORE_PASSWORD
-                keyAlias MYAPP_UPLOAD_KEY_ALIAS
-                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
-            }
-        }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
@@ -40,10 +37,8 @@ android {
 
 dependencies {
     implementation("com.facebook.react:react-android")
-    
-    // Add your native dependencies here
     implementation("androidx.core:core:1.13.1")
-    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
     
     debugImplementation("com.facebook.flipper:flipper:0.243.0")
     debugImplementation("com.facebook.flipper:flipper-network-plugin:0.243.0")

@@ -1,41 +1,84 @@
+// Root project name
+rootProject.name = 'BubbleOverlayApp'
+
+// React Native plugin management - CORRECT SYNTAX FOR GRADLE 8
 pluginManagement {
-    def version = providers.exec {
-        commandLine("node", "-e", "console.log(require('react-native/package.json').version);")
-    }.standardOutput.asText.get().trim()
-    def kotlinVersion = providers.exec {
-        commandLine("node", "-e", "console.log(require('react-native/package.json').version);")
-    }.standardOutput.asText.get().trim()
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+    }
     
     plugins {
-        id("com.facebook.react.settings") {
-            version = version
-        }
-        id("org.jetbrains.kotlin.android") version "1.9.24"
+        id "com.facebook.react.settings" version "0.74.5"
+        id "org.jetbrains.kotlin.android" version "1.9.24"
     }
 }
 
-rootProject.name = 'BubbleOverlayApp'
+// Dependency resolution management
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url "$rootDir/../node_modules/expo-modules-core/android"
+        }
+    }
+}
 
-// Import autolinking with proper path
+// Include expo autolinking if available
 def expoModulesCorePath = file("../node_modules/expo-modules-core")
 if (expoModulesCorePath.exists()) {
     apply from: file("../node_modules/expo-modules-core/scripts/autolinking.gradle")
 } else {
-    logger.warn("expo-modules-core not found, creating empty autolinking configuration")
-    
-    // Create a dummy autolinking configuration
+    // Create minimal autolinking configuration
     gradle.ext.expoRoot = file("../")
     gradle.ext.expoModuleRegistry = [:]
     
-    // Define a minimal autolinking configuration
-    project.ext.react = [
-        entryFile: "index.js",
-        enableHermes: true
-    ]
+    // Create a dummy autolinking file if needed
+    def autolinkingDir = file("../node_modules/expo-modules-core/scripts")
+    if (!autolinkingDir.exists()) {
+        autolinkingDir.mkdirs()
+        def dummyFile = file("../node_modules/expo-modules-core/scripts/autolinking.gradle")
+        dummyFile.text = """
+            // Dummy autolinking configuration
+            gradle.ext.expoRoot = project.rootProject.projectDir.parentFile
+            gradle.ext.expoModuleRegistry = [:]
+        """
+    }
 }
 
-apply from: new File(["node", "--print", "require.resolve('@react-native-community/cli-platform-android/package.json')"].execute(null, rootDir).text.trim(), "../native_modules.gradle");
+// React Native CLI autolinking
+apply from: new File(["node", "--print", "require.resolve('@react-native-community/cli-platform-android/package.json')"].execute(null, rootDir).text.trim(), "../native_modules.gradle")
 applyNativeModulesSettingsGradle(settings)
 
+// Include app module
 include ':app'
-includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')"].execute(null, rootDir).text.trim()).getParentFile())
+
+// Include React Native Gradle plugin
+def reactNativeGradlePlugin = new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')"].execute(null, rootDir).text.trim())
+if (reactNativeGradlePlugin.exists()) {
+    includeBuild(reactNativeGradlePlugin.parentFile)
+}
+
+// Force AndroidX resolution
+gradle.projectsLoaded {
+    gradle.rootProject {
+        configurations.all {
+            resolutionStrategy {
+                force "androidx.core:core:1.13.1"
+                force "androidx.appcompat:appcompat:1.6.1"
+                
+                eachDependency { details ->
+                    if (details.requested.group == 'com.android.support') {
+                        details.useVersion "28.0.0"
+                        details.useTarget group: 'androidx.core', 
+                                          name: 'core', 
+                                          version: '1.13.1'
+                    }
+                }
+            }
+        }
+    }
+}

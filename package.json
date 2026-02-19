@@ -23,7 +23,7 @@
     "expo-clipboard": "~8.0.8",
     "expo-crypto": "~15.0.8",
     "expo-file-system": "~19.0.21",
-    "expo-modules-core": "^3.0.29",
+    "expo-modules-core": "~1.12.0",
     "expo-notifications": "~0.32.16",
     "expo-sqlite": "~16.0.10",
     "react": "19.2.0",
