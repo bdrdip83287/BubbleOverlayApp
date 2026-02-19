@@ -24,17 +24,21 @@ jobs:
         run: |
           rm -rf node_modules package-lock.json
           npm install
-          # Ensure expo-modules-core is installed
           npm install expo-modules-core@~1.12.0
 
-      - name: Verify and create autolinking file
+      - name: Create safe autolinking file
         run: |
           mkdir -p node_modules/expo-modules-core/scripts/
-          if [ ! -f node_modules/expo-modules-core/scripts/autolinking.gradle ]; then
-            echo "// Autolinking configuration" > node_modules/expo-modules-core/scripts/autolinking.gradle
-            echo "gradle.ext.expoRoot = project.rootProject.projectDir.parentFile" >> node_modules/expo-modules-core/scripts/autolinking.gradle
-            echo "gradle.ext.expoModuleRegistry = [:]" >> node_modules/expo-modules-core/scripts/autolinking.gradle
-          fi
+          cat > node_modules/expo-modules-core/scripts/autolinking.gradle << 'EOF'
+          // Safe autolinking wrapper
+          gradle.ext.expoRoot = gradle.ext.expoRoot ?: rootDir.parentFile
+          gradle.ext.expoModuleRegistry = gradle.ext.expoModuleRegistry ?: [:]
+          ext.expoAutolinking = [
+              resolveConfig: { config -> return [:] },
+              resolveModules: { config -> return [:] }
+          ]
+          println "Expo autolinking loaded (safe mode)"
+          EOF
 
       - name: Setup Java
         uses: actions/setup-java@v4

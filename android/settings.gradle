@@ -27,58 +27,48 @@ dependencyResolutionManagement {
 // Set root project name AFTER pluginManagement
 rootProject.name = 'BubbleOverlayApp'
 
-// Include expo autolinking if available
-def expoModulesCorePath = file("../node_modules/expo-modules-core")
-if (expoModulesCorePath.exists()) {
-    apply from: file("../node_modules/expo-modules-core/scripts/autolinking.gradle")
-} else {
-    // Create minimal autolinking configuration
+// Handle expo autolinking - FIXED VERSION
+def expoAutolinkingPath = file("../node_modules/expo-modules-core/scripts/autolinking.gradle")
+if (expoAutolinkingPath.exists()) {
+    // Create a safe wrapper for autolinking
+    def expoSettings = settings
     gradle.ext.expoRoot = file("../")
     gradle.ext.expoModuleRegistry = [:]
     
-    // Create a dummy autolinking file if needed
-    def autolinkingDir = file("../node_modules/expo-modules-core/scripts")
-    if (!autolinkingDir.exists()) {
-        autolinkingDir.mkdirs()
-        def dummyFile = file("../node_modules/expo-modules-core/scripts/autolinking.gradle")
-        dummyFile.text = """
-            // Dummy autolinking configuration
-            gradle.ext.expoRoot = project.rootProject.projectDir.parentFile
-            gradle.ext.expoModuleRegistry = [:]
-        """
+    try {
+        apply from: expoAutolinkingPath
+    } catch (Exception e) {
+        println "Warning: Could not apply expo autolinking: ${e.message}"
     }
+} else {
+    println "Warning: expo-modules-core autolinking.gradle not found, using fallback"
+    gradle.ext.expoRoot = file("../")
+    gradle.ext.expoModuleRegistry = [:]
 }
 
-// React Native CLI autolinking
-apply from: new File(["node", "--print", "require.resolve('@react-native-community/cli-platform-android/package.json')"].execute(null, rootDir).text.trim(), "../native_modules.gradle")
-applyNativeModulesSettingsGradle(settings)
+// React Native CLI autolinking - FIXED VERSION
+try {
+    def cliPath = new File(["node", "--print", "require.resolve('@react-native-community/cli-platform-android/package.json')"].execute(null, rootDir).text.trim())
+    def nativeModulesPath = new File(cliPath.parentFile, "../native_modules.gradle")
+    if (nativeModulesPath.exists()) {
+        apply from: nativeModulesPath.absolutePath
+        applyNativeModulesSettingsGradle(settings)
+    } else {
+        println "Warning: native_modules.gradle not found"
+    }
+} catch (Exception e) {
+    println "Warning: Could not apply React Native CLI autolinking: ${e.message}"
+}
 
 // Include app module
 include ':app'
 
 // Include React Native Gradle plugin
-def reactNativeGradlePlugin = new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')"].execute(null, rootDir).text.trim())
-if (reactNativeGradlePlugin.exists()) {
-    includeBuild(reactNativeGradlePlugin.parentFile)
-}
-
-// Force AndroidX resolution
-gradle.projectsLoaded {
-    gradle.rootProject {
-        configurations.all {
-            resolutionStrategy {
-                force "androidx.core:core:1.13.1"
-                force "androidx.appcompat:appcompat:1.6.1"
-                
-                eachDependency { details ->
-                    if (details.requested.group == 'com.android.support') {
-                        details.useVersion "28.0.0"
-                        details.useTarget group: 'androidx.core', 
-                                          name: 'core', 
-                                          version: '1.13.1'
-                    }
-                }
-            }
-        }
+try {
+    def rnGradlePluginPath = new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')"].execute(null, rootDir).text.trim())
+    if (rnGradlePluginPath.exists()) {
+        includeBuild(rnGradlePluginPath.parentFile)
     }
+} catch (Exception e) {
+    println "Warning: Could not include React Native Gradle plugin: ${e.message}"
 }

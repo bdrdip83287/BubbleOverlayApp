@@ -18,21 +18,26 @@ buildscript {
     }
 }
 
-// Apply React Native root project plugin
 apply plugin: "com.facebook.react.rootproject"
 
-// Fix for duplicate classes
-configurations.all {
-    resolutionStrategy {
-        force 'androidx.core:core:1.13.1'
-        force 'androidx.appcompat:appcompat:1.6.1'
-        
-        // Force all support library dependencies to AndroidX
-        eachDependency { details ->
-            if (details.requested.group == 'com.android.support') {
-                details.useTarget group: 'androidx.core', 
-                                  name: 'core', 
-                                  version: '1.13.1'
+// Force AndroidX globally
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    
+    configurations.all {
+        resolutionStrategy {
+            force 'androidx.core:core:1.13.1'
+            force 'androidx.appcompat:appcompat:1.6.1'
+            
+            eachDependency { details ->
+                if (details.requested.group == 'com.android.support') {
+                    details.useTarget group: 'androidx.core', 
+                                      name: 'core', 
+                                      version: '1.13.1'
+                }
             }
         }
     }
