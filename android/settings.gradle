@@ -1,7 +1,4 @@
-// Root project name
-rootProject.name = 'BubbleOverlayApp'
-
-// React Native plugin management - CORRECT SYNTAX FOR GRADLE 8
+// pluginManagement MUST be the FIRST block in the file
 pluginManagement {
     repositories {
         gradlePluginPortal()
@@ -15,7 +12,7 @@ pluginManagement {
     }
 }
 
-// Dependency resolution management
+// Now you can add other blocks
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
     repositories {
@@ -26,6 +23,9 @@ dependencyResolutionManagement {
         }
     }
 }
+
+// Set root project name AFTER pluginManagement
+rootProject.name = 'BubbleOverlayApp'
 
 // Include expo autolinking if available
 def expoModulesCorePath = file("../node_modules/expo-modules-core")
