@@ -1,11 +1,11 @@
 buildscript {
     ext {
-        buildToolsVersion = "35.0.0"
+        buildToolsVersion = "34.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 35
-        targetSdkVersion = 35
-        ndkVersion = "27.1.12297006"
-        kotlinVersion = "2.0.21"
+        compileSdkVersion = 34
+        targetSdkVersion = 34
+        ndkVersion = "26.1.10909125"
+        kotlinVersion = "1.9.24"
     }
     repositories {
         google()
@@ -20,20 +20,21 @@ buildscript {
 
 apply plugin: "com.facebook.react.rootproject"
 
-// Force AndroidX and exclude support library globally
+// Fix for autolinking
 allprojects {
     repositories {
         google()
         mavenCentral()
+        maven {
+            url "$rootDir/../node_modules/expo-modules-core/android"
+        }
     }
     
     configurations.all {
         resolutionStrategy {
-            // Force specific versions
             force "androidx.core:core:1.13.1"
-            force "androidx.appcompat:appcompat:1.7.0"
+            force "androidx.appcompat:appcompat:1.6.1"
             
-            // Replace support library with AndroidX
             eachDependency { details ->
                 if (details.requested.group == 'com.android.support' 
                     && !details.requested.name.contains('multidex')) {
@@ -44,8 +45,6 @@ allprojects {
                 }
             }
         }
-        
-        // Explicitly exclude support library
         exclude group: 'com.android.support'
     }
 }

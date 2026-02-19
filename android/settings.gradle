@@ -1,8 +1,41 @@
-pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
-plugins { id("com.facebook.react.settings") }
-extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+pluginManagement {
+    def version = providers.exec {
+        commandLine("node", "-e", "console.log(require('react-native/package.json').version);")
+    }.standardOutput.asText.get().trim()
+    def kotlinVersion = providers.exec {
+        commandLine("node", "-e", "console.log(require('react-native/package.json').version);")
+    }.standardOutput.asText.get().trim()
+    
+    plugins {
+        id("com.facebook.react.settings") {
+            version = version
+        }
+        id("org.jetbrains.kotlin.android") version "1.9.24"
+    }
+}
+
 rootProject.name = 'BubbleOverlayApp'
+
+// Import autolinking with proper path
+def expoModulesCorePath = file("../node_modules/expo-modules-core")
+if (expoModulesCorePath.exists()) {
+    apply from: file("../node_modules/expo-modules-core/scripts/autolinking.gradle")
+} else {
+    logger.warn("expo-modules-core not found, creating empty autolinking configuration")
+    
+    // Create a dummy autolinking configuration
+    gradle.ext.expoRoot = file("../")
+    gradle.ext.expoModuleRegistry = [:]
+    
+    // Define a minimal autolinking configuration
+    project.ext.react = [
+        entryFile: "index.js",
+        enableHermes: true
+    ]
+}
+
+apply from: new File(["node", "--print", "require.resolve('@react-native-community/cli-platform-android/package.json')"].execute(null, rootDir).text.trim(), "../native_modules.gradle");
+applyNativeModulesSettingsGradle(settings)
+
 include ':app'
-includeBuild('../node_modules/@react-native/gradle-plugin')
-apply from: file("../node_modules/expo-modules-core/scripts/autolinking.gradle")
-useExpoModules()
+includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')"].execute(null, rootDir).text.trim()).getParentFile())

@@ -17,13 +17,22 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18
           cache: 'npm'
 
       - name: Install dependencies
         run: |
-          npm ci || npm install
-          npx expo install expo-modules-core -- --fix
+          rm -rf node_modules package-lock.json
+          npm install
+          # Ensure expo-modules-core is installed
+          npx expo install expo-modules-core --fix
+
+      - name: Verify autolinking file
+        run: |
+          ls -la node_modules/expo-modules-core/scripts/ || echo "Directory not found"
+          # Create directory if missing
+          mkdir -p node_modules/expo-modules-core/scripts/
+          touch node_modules/expo-modules-core/scripts/autolinking.gradle
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -32,24 +41,21 @@ jobs:
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Grant gradlew permission
         run: chmod +x android/gradlew
 
-      - name: Clean build
+      - name: Clean and Build
         run: |
           cd android
           ./gradlew clean
-
-      - name: Build Release APK
-        run: |
-          cd android
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleRelease --stacktrace --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release
           path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 30
+          if-no-files-found: error
