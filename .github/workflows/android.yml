@@ -1,68 +1,66 @@
 name: Build Android Release APK
 
+
 on:
   push:
     branches:
       - main
   workflow_dispatch:
 
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
+
     steps:
+      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
+
+      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: 'npm'
 
+
+      # Install dependencies
       - name: Install dependencies
         run: |
-          rm -rf node_modules package-lock.json
+          rm -rf node_modules
           npm install
-          npm install expo-modules-core@~1.12.0
+          npx expo install expo-modules-core
 
-      - name: Create safe autolinking file
+
+      # Expo prebuild (ANDROID ONLY)
+      - name: Expo prebuild (Android only)
         run: |
-          mkdir -p node_modules/expo-modules-core/scripts/
-          cat > node_modules/expo-modules-core/scripts/autolinking.gradle << 'EOF'
-          // Safe autolinking wrapper
-          gradle.ext.expoRoot = gradle.ext.expoRoot ?: rootDir.parentFile
-          gradle.ext.expoModuleRegistry = gradle.ext.expoModuleRegistry ?: [:]
-          ext.expoAutolinking = [
-              resolveConfig: { config -> return [:] },
-              resolveModules: { config -> return [:] }
-          ]
-          println "Expo autolinking loaded (safe mode)"
-          EOF
+          npx expo prebuild --clean --platform android
 
+
+      # Setup Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: 17
 
-      - name: Setup Android SDK
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
+      # Grant gradlew permission
       - name: Grant gradlew permission
         run: chmod +x android/gradlew
 
-      - name: Clean
-        run: |
-          cd android
-          ./gradlew clean
 
+      # Build APK
       - name: Build Release APK
         run: |
           cd android
-          ./gradlew assembleRelease --stacktrace --no-daemon
+          ./gradlew assembleRelease
 
+
+      # Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
