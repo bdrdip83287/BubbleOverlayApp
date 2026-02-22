@@ -18,33 +18,16 @@ buildscript {
     }
 }
 
-
 apply plugin: "com.facebook.react.rootproject"
 
-
-
-
-/**
- * ✅ FORCE replace old Android Support Library with AndroidX globally
- * This permanently removes duplicate class error
- */
 allprojects {
     configurations.all {
-
-
         resolutionStrategy {
-            force "androidx.core:core:1.13.1"
-
-
             eachDependency { details ->
                 if (details.requested.group == "com.android.support") {
-                    details.useTarget "androidx.core:core:1.13.1"
+                    details.useTarget("androidx.core:core:1.13.1")
                 }
             }
         }
-
-
-        exclude group: "com.android.support"
     }
 }
-

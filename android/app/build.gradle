@@ -60,3 +60,10 @@ edgeToEdgeEnabled=true
 # WARNING: This property has been deprecated and will be removed in Expo SDK 55. Use `edgeToEdgeEnabled` or `react.edgeToEdgeEnabled` to determine whether the project is using edge-to-edge.
 expo.edgeToEdgeEnabled=true
 
+
+configurations {
+    all {
+        exclude group: "com.android.support", module: "support-compat"
+        exclude group: "com.android.support"
+    }
+}
