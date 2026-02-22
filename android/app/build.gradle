@@ -67,3 +67,11 @@ configurations {
         exclude group: "com.android.support"
     }
 }
+
+/**
+ * 🚫 FORCE REMOVE SUPPORT LIBRARY
+ */
+configurations.all {
+    exclude group: "com.android.support"
+    exclude module: "support-compat"
+}

@@ -37,7 +37,6 @@ jobs:
       # Expo prebuild (ANDROID ONLY)
       - name: Expo prebuild (Android only)
         run: |
-          npx expo prebuild --clean --platform android
 
 
       # Setup Java
