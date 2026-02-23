@@ -1,0 +1,55 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main   # main branch এ push হলে trigger হবে
+  workflow_dispatch:  # manual trigger
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2️⃣ Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      # 3️⃣ Install dependencies
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      # 4️⃣ Expo login (for EAS build)
+      - name: Expo login
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}  # create token in your Expo account
+        run: npx expo login --token $EXPO_TOKEN
+
+      # 5️⃣ Configure EAS CLI
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      # 6️⃣ Build Android APK
+      - name: Build APK using EAS
+        run: eas build --platform android --profile production --non-interactive
+
+      # 7️⃣ Upload APK as artifact (optional)
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-apk
+          path: |
+            ./android/app/build/outputs/**/*.apk
+            ./build/*.apk
+
+      # 8️⃣ Show EAS build logs
+      - name: Show build log
+        run: eas build:list
+

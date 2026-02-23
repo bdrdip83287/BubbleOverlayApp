@@ -1,8 +1,8 @@
 {
   "name": "BubbleOverlayApp",
-  "displayName": "BubbleOverlayApp",
   "plugins": [
-    "expo-sqlite"
+    "expo-sqlite",
+    "expo-font"
   ],
   "android": {
     "package": "com.dip83287.bubbleoverlayapp"
