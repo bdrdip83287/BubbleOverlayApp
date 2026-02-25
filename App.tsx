@@ -1,37 +1,24 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React from 'react';
+import { View, Text, Button, NativeModules, StyleSheet } from 'react-native';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+const { OverlayModule } = NativeModules;
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+export default function App() {
 
-  return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
-  );
-}
+  const startBubble = () => {
+    OverlayModule.startBubble();
+  };
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
+  const stopBubble = () => {
+    OverlayModule.stopBubble();
+  };
 
   return (
     <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
+      <Text style={styles.title}>Bubble Overlay App</Text>
+      <Button title="Start Bubble" onPress={startBubble} />
+      <View style={{ height: 20 }} />
+      <Button title="Stop Bubble" onPress={stopBubble} />
     </View>
   );
 }
@@ -39,7 +26,11 @@ function AppContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 20,
+    marginBottom: 20,
   },
 });
-
-export default App;
