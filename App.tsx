@@ -1,24 +1,22 @@
 import React from 'react';
-import { View, Text, Button, NativeModules, StyleSheet } from 'react-native';
-
-const { OverlayModule } = NativeModules;
+import { View, Text, StyleSheet, Button } from 'react-native';
 
 export default function App() {
 
   const startBubble = () => {
-    OverlayModule.startBubble();
-  };
-
-  const stopBubble = () => {
-    OverlayModule.stopBubble();
+    console.log("Bubble Start Clicked");
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Bubble Overlay App</Text>
-      <Button title="Start Bubble" onPress={startBubble} />
-      <View style={{ height: 20 }} />
-      <Button title="Stop Bubble" onPress={stopBubble} />
+      <Text style={styles.text}>
+        Bubble Overlay App Running ✅
+      </Text>
+
+      <Button
+        title="Start Bubble"
+        onPress={startBubble}
+      />
     </View>
   );
 }
@@ -28,9 +26,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#ffffff'
   },
-  title: {
-    fontSize: 20,
-    marginBottom: 20,
-  },
+  text: {
+    fontSize: 18,
+    marginBottom: 20
+  }
 });
