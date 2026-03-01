@@ -90,8 +90,14 @@ class OverlayService : Service() {
         })
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        windowManager.removeView(bubbleView)
+override fun onDestroy() {
+    super.onDestroy()
+    try {
+        if (::bubbleView.isInitialized) {
+            windowManager.removeView(bubbleView)
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
+}
 }
