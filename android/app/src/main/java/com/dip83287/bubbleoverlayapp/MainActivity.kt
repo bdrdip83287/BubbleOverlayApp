@@ -1,28 +1,29 @@
-package com.dip83287.bubbleoverlayapp
+package com.bubbleoverlayapp;
 
-import android.os.Bundle
-import android.widget.Toast
-import com.facebook.react.ReactActivity
-import expo.modules.ReactActivityDelegateWrapper
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.Settings;
 
-class MainActivity : ReactActivity() {
+import com.facebook.react.ReactActivity;
 
-  override fun getMainComponentName(): String {
-    return "main"
+public class MainActivity extends ReactActivity {
+
+  @Override
+  protected String getMainComponentName() {
+    return "main";
   }
 
-  override fun onCreate(savedInstanceState: Bundle?) {
-    try {
-      super.onCreate(null)
-    } catch (e: Exception) {
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
 
-      Toast.makeText(
-        this,
-        "MAIN ACTIVITY CRASH:\n" + e.message,
-        Toast.LENGTH_LONG
-      ).show()
-
-      e.printStackTrace()
+    if (!Settings.canDrawOverlays(this)) {
+      Intent intent = new Intent(
+        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+        Uri.parse("package:" + getPackageName())
+      );
+      startActivity(intent);
     }
   }
 }
