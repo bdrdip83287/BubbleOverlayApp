@@ -3,7 +3,7 @@ package com.dip83287.bubbleoverlayapp
 import android.app.*
 import android.content.Intent
 import android.graphics.PixelFormat
-import android.os.*
+import android.os.Build
 import android.view.*
 import android.widget.ImageView
 import androidx.core.app.NotificationCompat
@@ -90,14 +90,8 @@ class OverlayService : Service() {
         })
     }
 
-override fun onDestroy() {
-    super.onDestroy()
-    try {
-        if (::bubbleView.isInitialized) {
-            windowManager.removeView(bubbleView)
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
+    override fun onDestroy() {
+        super.onDestroy()
+        windowManager.removeView(bubbleView)
     }
-}
 }

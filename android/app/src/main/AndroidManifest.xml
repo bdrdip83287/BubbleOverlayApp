@@ -1,41 +1,33 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
   <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
   <application
-    android:name=".MainApplication"
-    android:label="@string/app_name"
-    android:icon="@mipmap/ic_launcher"
-    android:roundIcon="@mipmap/ic_launcher_round"
-    android:allowBackup="true"
-    android:theme="@style/AppTheme"
-    android:supportsRtl="true"
-    android:usesCleartextTraffic="true">
+      android:name=".MainApplication"
+      android:label="@string/app_name"
+      android:icon="@mipmap/ic_launcher"
+      android:roundIcon="@mipmap/ic_launcher_round"
+      android:theme="@style/AppTheme"
+      android:usesCleartextTraffic="true"
+      android:supportsRtl="true"
+      android:allowBackup="true">
 
-    <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
+      <activity
+          android:name=".MainActivity"
+          android:exported="true"
+          android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode"
+          android:windowSoftInputMode="adjustResize"
+          android:launchMode="singleTask"
+          android:theme="@style/Theme.App.SplashScreen">
+          <intent-filter>
+              <action android:name="android.intent.action.MAIN"/>
+              <category android:name="android.intent.category.LAUNCHER"/>
+          </intent-filter>
+      </activity>
 
-    <activity
-      android:name=".MainActivity"
-      android:exported="true"
-      android:launchMode="singleTask"
-      android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
-      android:theme="@style/Theme.App.SplashScreen">
-
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN"/>
-        <category android:name="android.intent.category.LAUNCHER"/>
-      </intent-filter>
-
-    </activity>
-
-    <!-- ✅ CORRECT OVERLAY SERVICE -->
-    <service
-        android:name=".OverlayService"
-        android:exported="false"
-        android:foregroundServiceType="mediaProjection"/>
-
+      <service android:name=".OverlayService" android:exported="false"/>
   </application>
-
 </manifest>
