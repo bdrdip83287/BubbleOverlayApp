@@ -13,45 +13,51 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
+// 👇 IMPORT OUR OVERLAY MODULE
+import com.dip83287.bubbleoverlayapp.OverlayModule
+
 class MainApplication : Application(), ReactApplication {
 
-  override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
-      this,
-      object : DefaultReactNativeHost(this) {
+    override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
+        this,
+        object : DefaultReactNativeHost(this) {
 
-        override fun getPackages(): List<ReactPackage> =
-            PackageList(this).packages.apply {
-              add(object : ReactPackage {
-                override fun createNativeModules(reactContext: com.facebook.react.bridge.ReactApplicationContext)
-                  = listOf(OverlayModule(reactContext))
+            override fun getPackages(): List<ReactPackage> =
+                PackageList(this).packages.apply {
+                    // 🔥 REGISTER OVERLAY MODULE
+                    add(object : ReactPackage {
+                        override fun createNativeModules(reactContext: com.facebook.react.bridge.ReactApplicationContext)
+                                = listOf(OverlayModule(reactContext))
 
-                override fun createViewManagers(reactContext: com.facebook.react.bridge.ReactApplicationContext)
-                  = emptyList<com.facebook.react.uimanager.ViewManager<*, *>>()
-              })
-            }
+                        override fun createViewManagers(reactContext: com.facebook.react.bridge.ReactApplicationContext)
+                                = emptyList<com.facebook.react.uimanager.ViewManager<*, *>>()
+                    })
+                }
 
-        override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
-        override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
-        override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
-      }
-  )
+            override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
 
-  override val reactHost: ReactHost
-    get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
+            override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
 
-  override fun onCreate() {
-    super.onCreate()
-    DefaultNewArchitectureEntryPoint.releaseLevel = try {
-      ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
-    } catch (e: IllegalArgumentException) {
-      ReleaseLevel.STABLE
+            override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
+        }
+    )
+
+    override val reactHost: ReactHost
+        get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
+
+    override fun onCreate() {
+        super.onCreate()
+        DefaultNewArchitectureEntryPoint.releaseLevel = try {
+            ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
+        } catch (e: IllegalArgumentException) {
+            ReleaseLevel.STABLE
+        }
+        // ❌ loadReactNative(this) - এটি আর প্রয়োজন নেই
+        ApplicationLifecycleDispatcher.onApplicationCreate(this)
     }
-    loadReactNative(this)
-    ApplicationLifecycleDispatcher.onApplicationCreate(this)
-  }
 
-  override fun onConfigurationChanged(newConfig: Configuration) {
-    super.onConfigurationChanged(newConfig)
-    ApplicationLifecycleDispatcher.onConfigurationChanged(this, newConfig)
-  }
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        ApplicationLifecycleDispatcher.onConfigurationChanged(this, newConfig)
+    }
 }
