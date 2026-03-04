@@ -1,16 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- ✅ Floating bubble overlay permission -->
+    <!-- আপনার existing permissions -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    
-    <!-- ✅ Storage permissions for backup -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    
-    <!-- ✅ For Android 13+ notification permission -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    
-    <!-- ✅ Internet permission (if needed) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
