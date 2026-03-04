@@ -21,16 +21,28 @@ jobs:
           node-version: 18
           cache: 'npm'
 
+      - name: Clear npm cache
+        run: |
+          npm cache clean --force
+
+      - name: Install Dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --force
+          npm list --depth=0
+
       - name: Setup Java 17
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Dependencies
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Create local.properties
         run: |
-          npm install
-          npm install -g yarn
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
       - name: Cache Gradle
         uses: actions/cache@v3
@@ -38,12 +50,20 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
+            android/.gradle
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
       - name: Make Gradlew Executable
-        run: chmod +x android/gradlew
+        run: |
+          chmod +x android/gradlew
+          cd android && ./gradlew --version
+
+      - name: Clean Build
+        run: |
+          cd android
+          ./gradlew clean --stacktrace
 
       - name: Build Debug APK
         run: |
@@ -55,31 +75,4 @@ jobs:
         with:
           name: app-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Build Release APK
-        if: github.ref == 'refs/heads/main'
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          # Decode keystore
-          echo $KEYSTORE_BASE64 | base64 --decode > android/app/my-release-key.keystore
-          
-          # Create keystore.properties
-          echo "storeFile=my-release-key.keystore" > android/keystore.properties
-          echo "storePassword=$KEYSTORE_PASSWORD" >> android/keystore.properties
-          echo "keyAlias=$KEY_ALIAS" >> android/keystore.properties
-          echo "keyPassword=$KEY_PASSWORD" >> android/keystore.properties
-          
-          # Build release
-          cd android
-          ./gradlew assembleRelease
-
-      - name: Upload Release APK
-        if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v3
-        with:
-          name: app-release
-          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
