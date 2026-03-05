@@ -92,6 +92,25 @@ android {
         multiDexEnabled true
     }
 
+    // ✅ packagingOptions যোগ করা হলো - এখানে!
+    packagingOptions {
+        pickFirst '**/libjsc.so'
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libreact_nativemodule_core.so'
+        pickFirst '**/libturbomodulejsijni.so'
+        pickFirst '**/libhermes.so'
+        pickFirst '**/libjscexecutor.so'
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/license.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/ASL2.0'
+        exclude 'META-INF/*.kotlin_module'
+    }
+
     signingConfigs {
         debug {
             storeFile file('debug.keystore')

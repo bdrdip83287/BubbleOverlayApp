@@ -4,8 +4,13 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
+    "ios": "react-native run-ios",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint .",
+    "clean": "cd android && ./gradlew clean",
+    "build:debug": "cd android && ./gradlew assembleDebug",
+    "build:release": "cd android && ./gradlew assembleRelease"
   },
   "dependencies": {
     "react": "18.2.0",
