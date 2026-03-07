@@ -29,7 +29,7 @@ android {
         multiDexEnabled true
     }
 
-    // ✅ গুরুত্বপূর্ণ: debug এবং release manifest ফাইল আলাদাভাবে সেট করুন
+    // ✅ গুরুত্বপূর্ণ: debug এবং release manifest ফাইল আলাদাভাবে সেট করা
     sourceSets {
         main {
             manifest.srcFile 'src/main/AndroidManifest.xml'
