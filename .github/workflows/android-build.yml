@@ -32,62 +32,28 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # ✅ নতুন স্টেপ ১: ReactNative মডিউলের পাথ চেক ও symlink তৈরি
+      - name: Create assets directory
+        run: |
+          mkdir -p android/app/src/main/assets
+          mkdir -p android/app/src/debug
+          mkdir -p android/app/src/release
+
+      - name: Bundle JS
+        run: |
+          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+
       - name: Fix React Native Android path
         run: |
-          echo "=== 🔍 Checking React Native Android path ==="
-          # প্রয়োজনীয় ডিরেক্টরি তৈরি
           mkdir -p android/node_modules/react-native
-          
-          # যদি symlink/ফোল্ডার না থাকে, তাহলে তৈরি করুন
           if [ ! -e android/node_modules/react-native/ReactAndroid ]; then
-            echo "Creating symlink for ReactAndroid..."
             ln -sf ../../../node_modules/react-native/ReactAndroid android/node_modules/react-native/ReactAndroid
           fi
-          
-          # ডিরেক্টরি লিস্টিং দেখুন (ডিবাগিংয়ের জন্য)
-          echo "=== 📁 Directory structure ==="
-          ls -la android/node_modules/ || echo "android/node_modules not found"
-          ls -la android/node_modules/react-native/ 2>/dev/null || echo "react-native symlink not found"
-          ls -la android/node_modules/react-native/ReactAndroid/ 2>/dev/null || echo "ReactAndroid not found"
-
-      # ✅ নতুন স্টেপ ২: Gradle প্রপার্টি ফাইল চেক
-      - name: Verify gradle.properties
-        run: |
-          echo "=== 🔍 Checking gradle.properties files ==="
-          # মূল প্রকল্পের gradle.properties
-          if [ -f "android/gradle.properties" ]; then
-            echo "✅ android/gradle.properties exists"
-            cat android/gradle.properties | grep -v "^#" | head -10
-          else
-            echo "❌ android/gradle.properties not found!"
-          fi
-          
-          # React Native-এর gradle.properties (যেটা খুঁজছে)
-          if [ -f "android/node_modules/react-native/ReactAndroid/gradle.properties" ]; then
-            echo "✅ ReactAndroid/gradle.properties exists (via symlink)"
-          else
-            echo "⚠️ ReactAndroid/gradle.properties not found, but symlink should handle it."
-          fi
-
-      - name: Verify manifest files
-        run: |
-          echo "=== 📁 Checking manifest files ==="
-          echo "Main manifest:"
-          cat android/app/src/main/AndroidManifest.xml | head -10
-          echo ""
-          echo "Debug manifest:"
-          cat android/app/src/debug/AndroidManifest.xml 2>/dev/null || echo "Debug manifest not found"
-          echo ""
 
       - name: Build APK
         run: |
           cd android
           chmod +x gradlew
-          echo "=== 🏗️ Cleaning old build ==="
           ./gradlew clean
-          echo "=== 🚀 Building Debug APK ==="
-          # --no-daemon ব্যবহার করা হচ্ছে daemon সংক্রান্ত সমস্যা এড়াতে
           ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Upload APK Artifact
