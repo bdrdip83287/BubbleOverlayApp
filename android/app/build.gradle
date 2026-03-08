@@ -2,28 +2,46 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+/**
+ * React Native Gradle Extension configuration
+ * This is the new, correct format for React Native 0.73
+ */
 react {
+    // Root directory of your project
     root = file("..")
+    
+    // Directory where the react-native NPM package is located
     reactNativeDir = file("../node_modules/react-native")
+    
+    // Directory where the react-native Codegen package is located
     codegenDir = file("../node_modules/@react-native/codegen")
+    
+    // The cli.js file location
     cliFile = file("../node_modules/react-native/cli.js")
+    
+    // The entry file for bundle generation
     entryFile = file("../index.js")
     
-    // ✅ গুরুত্বপূর্ণ: bundle assets কনফিগারেশন
+    // The name of the generated asset file containing your JS bundle
     bundleAssetName = "index.android.bundle"
-    jsBundleDirRelease = file("build/intermediates/merged_assets/release/out")
-    resourcesDirRelease = file("build/intermediates/res/merged/release")
+    
+    // Disable creating a separate bundle for each architecture
+    enableSeparateBuildPerCPUArchitecture = false
+    
+    // Enable Proguard in release builds
+    enableProguardInReleaseBuilds = true
 }
 
-def enableProguardInReleaseBuilds = true
 def jscFlavor = 'org.webkit:android-jsc:+'
 
 android {
+    // These values are taken from rootProject.ext (set in android/build.gradle)
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.dip83287.bubbleoverlayapp"
+    
     defaultConfig {
         applicationId "com.dip83287.bubbleoverlayapp"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -33,7 +51,7 @@ android {
         multiDexEnabled true
     }
 
-    // ✅ sourceSets কনফিগারেশন
+    // Source sets configuration - crucial for manifest merging
     sourceSets {
         main {
             manifest.srcFile 'src/main/AndroidManifest.xml'
@@ -49,6 +67,7 @@ android {
         }
     }
 
+    // Packaging options to handle duplicate files
     packagingOptions {
         pickFirst '**/libjsc.so'
         pickFirst '**/libc++_shared.so'
@@ -74,15 +93,6 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
-        // ✅ Release signing config যোগ করুন
-        release {
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                storeFile file(MYAPP_UPLOAD_STORE_FILE)
-                storePassword MYAPP_UPLOAD_STORE_PASSWORD
-                keyAlias MYAPP_UPLOAD_KEY_ALIAS
-                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
-            }
-        }
     }
 
     buildTypes {
@@ -90,6 +100,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
+            // For production, use your own signing config
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
@@ -98,13 +109,13 @@ android {
 }
 
 dependencies {
+    // React Native core dependency
     implementation("com.facebook.react:react-android")
+    
+    // Multi-dex support
     implementation("androidx.multidex:multidex:2.0.1")
     
-    // ✅ Floating service এর জন্য প্রয়োজনীয় ডিপেন্ডেন্সি
-    implementation "androidx.core:core-ktx:1.12.0"
-    implementation "androidx.appcompat:appcompat:1.6.1"
-
+    // Hermes or JSC
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
@@ -112,11 +123,6 @@ dependencies {
     }
 }
 
+// Apply native modules and vector icons
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
-
-// ✅ Bundle assets কপি করার টাস্ক
-task copyDownloadableDepsToLibs(type: Copy) {
-    from configurations.implementation
-    into 'libs'
-}
