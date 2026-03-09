@@ -11,61 +11,72 @@ import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
 import android.app.AlertDialog
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class MainActivity : ReactActivity() {
 
-    /**
-     * Returns the name of the main component registered from JavaScript. This is used to schedule
-     * rendering of the component.
-     */
+    companion object {
+        const val OVERLAY_PERMISSION_REQUEST_CODE = 1234
+        const val SYSTEM_ALERT_WINDOW_PERMISSION = "android.permission.SYSTEM_ALERT_WINDOW"
+    }
+
     override fun getMainComponentName(): String = "BubbleOverlayApp"
 
-    /**
-     * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
-     * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
-     */
     override fun createReactActivityDelegate(): ReactActivityDelegate =
         DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // ✅ Floating bubble permission check for Android 6.0+
-        checkOverlayPermission()
+        // ✅ Permission check for Android 6.0+
+        checkAndRequestOverlayPermission()
     }
 
-    private fun checkOverlayPermission() {
+    private fun checkAndRequestOverlayPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (!Settings.canDrawOverlays(this)) {
-                // Show explanation dialog before requesting permission
-                AlertDialog.Builder(this)
-                    .setTitle("Overlay Permission Required")
-                    .setMessage("This app needs overlay permission to show floating bubble notes on top of other apps.")
-                    .setPositiveButton("Grant Permission") { _, _ ->
-                        // Open system settings for overlay permission
-                        val intent = Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:$packageName")
-                        )
-                        startActivityForResult(intent, 1234)
-                    }
-                    .setNegativeButton("Cancel") { _, _ ->
-                        Toast.makeText(this, "App may not function properly without overlay permission", Toast.LENGTH_LONG).show()
-                    }
-                    .show()
+                showOverlayPermissionDialog()
+            } else {
+                Toast.makeText(this, "✓ Overlay permission already granted", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun showOverlayPermissionDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Overlay Permission Required")
+            .setMessage("This app needs overlay permission to show floating bubble notes on top of other apps.")
+            .setPositiveButton("Grant Permission") { _, _ ->
+                openOverlayPermissionSettings()
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                Toast.makeText(this, "App may not function properly without overlay permission", Toast.LENGTH_LONG).show()
+            }
+            .show()
+    }
+
+    private fun openOverlayPermissionSettings() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
         }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        
-        if (requestCode == 1234) {
+
+        if (requestCode == OVERLAY_PERMISSION_REQUEST_CODE) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (Settings.canDrawOverlays(this)) {
-                    Toast.makeText(this, "✓ Overlay permission granted", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "✓ Overlay permission granted! Restart app to use bubble.", Toast.LENGTH_LONG).show()
+                    // Optionally restart app or notify React Native
                 } else {
-                    Toast.makeText(this, "✗ Overlay permission denied. Bubble feature may not work.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "✗ Overlay permission denied. Bubble feature will not work.", Toast.LENGTH_LONG).show()
                 }
             }
         }

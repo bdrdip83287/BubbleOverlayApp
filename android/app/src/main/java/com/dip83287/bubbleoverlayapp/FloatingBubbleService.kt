@@ -18,6 +18,7 @@ class FloatingBubbleService : Service() {
     companion object {
         private var bubbleView: View? = null
         private var isServiceRunning = false
+        private const val BUBBLE_SIZE = 150 // dp
     }
 
     private lateinit var windowManager: WindowManager
@@ -33,80 +34,92 @@ class FloatingBubbleService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (bubbleView != null) return START_STICKY
+        if (bubbleView != null) {
+            // Bubble already exists, just update
+            return START_STICKY
+        }
 
         try {
-            // Create bubble view
-            val inflater = getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
-            bubbleView = inflater.inflate(R.layout.floating_bubble, null)
-
-            val params = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                WindowManager.LayoutParams(
-                    200,
-                    200,
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                    PixelFormat.TRANSLUCENT
-                )
-            } else {
-                WindowManager.LayoutParams(
-                    200,
-                    200,
-                    WindowManager.LayoutParams.TYPE_PHONE,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                    PixelFormat.TRANSLUCENT
-                )
-            }
-
-            params.gravity = Gravity.TOP or Gravity.START
-            params.x = 0
-            params.y = 300
-
-            // Set touch listener for dragging
-            bubbleView?.setOnTouchListener { view, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        initialX = params.x
-                        initialY = params.y
-                        initialTouchX = event.rawX
-                        initialTouchY = event.rawY
-                        true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        params.x = initialX + (event.rawX - initialTouchX).toInt()
-                        params.y = initialY + (event.rawY - initialTouchY).toInt()
-                        windowManager.updateViewLayout(view, params)
-                        true
-                    }
-                    MotionEvent.ACTION_UP -> {
-                        // Handle click if not dragged
-                        if (Math.abs(event.rawX - initialTouchX) < 10 && 
-                            Math.abs(event.rawY - initialTouchY) < 10) {
-                            // Open main app
-                            val intent = Intent(this, MainActivity::class.java)
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            startActivity(intent)
-                        }
-                        true
-                    }
-                    else -> false
-                }
-            }
-
-            bubbleView?.setOnLongClickListener {
-                Toast.makeText(this, "Long press to close", Toast.LENGTH_SHORT).show()
-                stopSelf()
-                true
-            }
-
-            windowManager.addView(bubbleView, params)
-
+            createBubbleView()
+            Toast.makeText(this, "Floating bubble activated", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Failed to create bubble: ${e.message}", Toast.LENGTH_LONG).show()
         }
 
         return START_STICKY
+    }
+
+    private fun createBubbleView() {
+        // Create a simple bubble view programmatically
+        bubbleView = ImageView(this).apply {
+            setImageResource(android.R.drawable.ic_dialog_info) // You can replace with your own icon
+            setBackgroundColor(0xFFFFA500.toInt()) // Orange color
+            setPadding(20, 20, 20, 20)
+        }
+
+        val layoutParams = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams(
+                BUBBLE_SIZE,
+                BUBBLE_SIZE,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT
+            )
+        } else {
+            WindowManager.LayoutParams(
+                BUBBLE_SIZE,
+                BUBBLE_SIZE,
+                WindowManager.LayoutParams.TYPE_PHONE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT
+            )
+        }
+
+        layoutParams.gravity = Gravity.TOP or Gravity.START
+        layoutParams.x = 100 // Initial X position
+        layoutParams.y = 300 // Initial Y position
+
+        // Set touch listener for dragging and clicking
+        bubbleView?.setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = layoutParams.x
+                    initialY = layoutParams.y
+                    initialTouchX = event.rawX
+                    initialTouchY = event.rawY
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    layoutParams.x = initialX + (event.rawX - initialTouchX).toInt()
+                    layoutParams.y = initialY + (event.rawY - initialTouchY).toInt()
+                    windowManager.updateViewLayout(view, layoutParams)
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    // Check if it was a click (not a drag)
+                    val dx = event.rawX - initialTouchX
+                    val dy = event.rawY - initialTouchY
+                    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+                        // Click action - open main app
+                        val intent = Intent(this, MainActivity::class.java)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+
+        // Long press to close
+        bubbleView?.setOnLongClickListener {
+            Toast.makeText(this, "Closing floating bubble", Toast.LENGTH_SHORT).show()
+            stopSelf()
+            true
+        }
+
+        windowManager.addView(bubbleView, layoutParams)
     }
 
     override fun onDestroy() {
@@ -116,10 +129,11 @@ class FloatingBubbleService : Service() {
                 windowManager.removeView(it)
                 bubbleView = null
             }
+            isServiceRunning = false
+            Toast.makeText(this, "Floating bubble closed", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        isServiceRunning = false
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

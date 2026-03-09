@@ -8,20 +8,25 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.Promise
+import android.widget.Toast
 
 class OverlayModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
-    override fun getName(): String {
-        return "OverlayModule"
+    companion object {
+        const val NAME = "OverlayModule"
     }
+
+    override fun getName(): String = NAME
 
     @ReactMethod
     fun startBubble(promise: Promise) {
         try {
             val context = reactApplicationContext
 
+            // Check permission first
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (!Settings.canDrawOverlays(context)) {
+                    // Open permission settings
                     val intent = Intent(
                         Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                         Uri.parse("package:${context.packageName}")
@@ -33,17 +38,18 @@ class OverlayModule(reactContext: ReactApplicationContext) : ReactContextBaseJav
                 }
             }
 
+            // Start floating bubble service
             val serviceIntent = Intent(context, FloatingBubbleService::class.java)
-            
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(serviceIntent)
             } else {
                 context.startService(serviceIntent)
             }
-            
+
             promise.resolve("Bubble started successfully")
         } catch (e: Exception) {
-            promise.reject("ERROR", e.message)
+            promise.reject("ERROR", e.message ?: "Unknown error")
         }
     }
 
@@ -55,21 +61,21 @@ class OverlayModule(reactContext: ReactApplicationContext) : ReactContextBaseJav
             context.stopService(serviceIntent)
             promise.resolve("Bubble stopped successfully")
         } catch (e: Exception) {
-            promise.reject("ERROR", e.message)
+            promise.reject("ERROR", e.message ?: "Unknown error")
         }
     }
 
     @ReactMethod
     fun checkOverlayPermission(promise: Promise) {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val hasPermission = Settings.canDrawOverlays(reactApplicationContext)
-                promise.resolve(hasPermission)
+            val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                Settings.canDrawOverlays(reactApplicationContext)
             } else {
-                promise.resolve(true)
+                true
             }
+            promise.resolve(hasPermission)
         } catch (e: Exception) {
-            promise.reject("ERROR", e.message)
+            promise.reject("ERROR", e.message ?: "Unknown error")
         }
     }
 }
