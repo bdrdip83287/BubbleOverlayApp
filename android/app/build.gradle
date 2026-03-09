@@ -2,40 +2,20 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
-/**
- * এই প্রপার্টিগুলো react ব্লকের বাইরে ডিফাইন করতে হয়
- */
-def enableSeparateBuildPerCPUArchitecture = false
 def enableProguardInReleaseBuilds = true
 
-/**
- * React Native Gradle Extension configuration
- * সঠিক ও আধুনিক ফরম্যাট
- */
 react {
-    // আপনার প্রোজেক্টের রুট ডিরেক্টরি
     root = file("..")
-    
-    // react-native NPM প্যাকেজের অবস্থান
     reactNativeDir = file("../node_modules/react-native")
-    
-    // react-native Codegen প্যাকেজের অবস্থান
     codegenDir = file("../node_modules/@react-native/codegen")
-    
-    // cli.js ফাইলের অবস্থান
     cliFile = file("../node_modules/react-native/cli.js")
-    
-    // এন্ট্রি ফাইল (index.js বা index.android.js)
     entryFile = file("../index.js")
-    
-    // JS bundle ফাইলের নাম
     bundleAssetName = "index.android.bundle"
 }
 
 def jscFlavor = 'org.webkit:android-jsc:+'
 
 android {
-    // এই ভ্যালুগুলো rootProject.ext থেকে নেওয়া হচ্ছে (android/build.gradle-এ সেট করা)
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
@@ -51,7 +31,6 @@ android {
         multiDexEnabled true
     }
 
-    // সোর্স সেট কনফিগারেশন - ম্যানিফেস্ট মার্জিং-এর জন্য অত্যন্ত জরুরি
     sourceSets {
         main {
             manifest.srcFile 'src/main/AndroidManifest.xml'
@@ -62,12 +41,8 @@ android {
         debug {
             manifest.srcFile 'src/debug/AndroidManifest.xml'
         }
-        release {
-            manifest.srcFile 'src/release/AndroidManifest.xml'
-        }
     }
 
-    // ডুপ্লিকেট ফাইল হ্যান্ডেল করার জন্য প্যাকেজিং অপশন
     packagingOptions {
         pickFirst '**/libjsc.so'
         pickFirst '**/libc++_shared.so'
@@ -100,7 +75,6 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            // প্রোডাকশনের জন্য আপনার নিজস্ব সাইনিং কনফিগ ব্যবহার করুন
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
@@ -109,13 +83,11 @@ android {
 }
 
 dependencies {
-    // React Native কোর ডিপেন্ডেন্সি
     implementation("com.facebook.react:react-android")
-    
-    // Multi-dex সাপোর্ট
     implementation("androidx.multidex:multidex:2.0.1")
-    
-    // Hermes অথবা JSC
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
@@ -123,6 +95,5 @@ dependencies {
     }
 }
 
-// নেটিভ মডিউল এবং ভেক্টর আইকন অ্যাপ্লাই
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
