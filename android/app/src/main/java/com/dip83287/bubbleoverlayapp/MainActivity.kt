@@ -11,9 +11,6 @@ import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
 import android.app.AlertDialog
-import android.content.pm.PackageManager
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 
 class MainActivity : ReactActivity() {
 
@@ -29,33 +26,28 @@ class MainActivity : ReactActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Check permission on startup
-        checkOverlayPermission()
+        // Request overlay permission on start
+        requestOverlayPermission()
     }
 
-    private fun checkOverlayPermission() {
+    private fun requestOverlayPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (!Settings.canDrawOverlays(this)) {
-                // Show dialog to request permission
-                showPermissionDialog()
+                // Show explanation dialog
+                AlertDialog.Builder(this)
+                    .setTitle("Floating Bubble Permission Required")
+                    .setMessage("This app needs 'Display over other apps' permission to show floating notes.")
+                    .setPositiveButton("Grant Permission") { _, _ ->
+                        openOverlaySettings()
+                    }
+                    .setNegativeButton("Cancel") { _, _ ->
+                        Toast.makeText(this, "Bubble feature disabled", Toast.LENGTH_SHORT).show()
+                    }
+                    .show()
             } else {
-                // Permission already granted
-                Toast.makeText(this, "✓ Overlay permission granted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "✓ Permission already granted", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun showPermissionDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("Floating Bubble Permission Required")
-            .setMessage("To show floating notes, please allow display over other apps in settings.")
-            .setPositiveButton("Open Settings") { _, _ ->
-                openOverlaySettings()
-            }
-            .setNegativeButton("Cancel") { _, _ ->
-                Toast.makeText(this, "Bubble feature disabled", Toast.LENGTH_SHORT).show()
-            }
-            .show()
     }
 
     private fun openOverlaySettings() {

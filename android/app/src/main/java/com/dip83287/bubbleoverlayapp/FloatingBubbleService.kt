@@ -21,11 +21,11 @@ class FloatingBubbleService : Service() {
     companion object {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "FloatingBubbleChannel"
-        private var bubbleView: View? = null
-        private var isRunning = false
+        private const val CHANNEL_NAME = "Floating Bubble Service"
     }
 
     private lateinit var windowManager: WindowManager
+    private var bubbleView: View? = null
     private var initialX = 0
     private var initialY = 0
     private var initialTouchX = 0f
@@ -35,17 +35,17 @@ class FloatingBubbleService : Service() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         createNotificationChannel()
-        isRunning = true
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Floating Bubble Service",
+                CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows floating bubble for notes"
+                description = "Shows floating bubble for quick notes"
+                setShowBadge(false)
             }
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
@@ -53,6 +53,14 @@ class FloatingBubbleService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Check permission before creating bubble
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+        }
+
         startForeground(NOTIFICATION_ID, createNotification())
         
         if (bubbleView == null) {
@@ -68,6 +76,7 @@ class FloatingBubbleService : Service() {
             .setContentText("Tap to open notes, long press to close")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
             .build()
     }
 
@@ -81,14 +90,16 @@ class FloatingBubbleService : Service() {
 
         val layoutParams = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams(
-                150, 150,
+                150,
+                150,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
             )
         } else {
             WindowManager.LayoutParams(
-                150, 150,
+                150,
+                150,
                 WindowManager.LayoutParams.TYPE_PHONE,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
@@ -118,7 +129,7 @@ class FloatingBubbleService : Service() {
                     val dx = event.rawX - initialTouchX
                     val dy = event.rawY - initialTouchY
                     if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-                        // Click action
+                        // Open main activity on click
                         val intent = Intent(this, MainActivity::class.java)
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         startActivity(intent)
@@ -144,13 +155,10 @@ class FloatingBubbleService : Service() {
                 windowManager.removeView(it)
                 bubbleView = null
             }
-            isRunning = false
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    fun isRunning(): Boolean = isRunning
 }

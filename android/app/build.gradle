@@ -38,9 +38,6 @@ android {
             res.srcDirs = ['src/main/res']
             assets.srcDirs = ['src/main/assets']
         }
-        debug {
-            manifest.srcFile 'src/debug/AndroidManifest.xml'
-        }
     }
 
     packagingOptions {

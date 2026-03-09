@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.dip83287.bubbleoverlayapp">
 
+    <!-- Required permissions for floating bubble -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.SYSTEM_OVERLAY_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    
+    <!-- Other permissions -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <!-- Required for Android 10+ -->
-    <uses-permission android:name="android.permission.SYSTEM_OVERLAY_WINDOW" />
-    
-    <!-- This is crucial for permission toggles -->
-    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
       android:name=".MainApplication"
@@ -41,7 +42,7 @@
 
       </activity>
 
-      <!-- Floating Bubble Service with proper foreground service type -->
+      <!-- Floating Bubble Service with special use type -->
       <service
         android:name=".FloatingBubbleService"
         android:enabled="true"
@@ -49,8 +50,9 @@
         android:foregroundServiceType="specialUse"
         android:stopWithTask="false">
 
-        <property android:name="android.foreground_service_type_special_use"
-                  android:value="floating_bubble" />
+        <property
+            android:name="android.foreground_service_type_special_use"
+            android:value="floating_bubble" />
       </service>
 
     </application>
