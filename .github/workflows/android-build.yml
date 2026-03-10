@@ -10,7 +10,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -45,8 +44,8 @@ jobs:
       - name: Fix React Native Android path
         run: |
           mkdir -p android/node_modules/react-native
-          if [ ! -e android/node_modules/react-native/ReactAndroid ]; then
-            ln -sf ../../../node_modules/react-native/ReactAndroid android/node_modules/react-native/ReactAndroid
+          if [ ! -e android/node_modules/react-native/react.gradle ]; then
+            ln -sf ../../../node_modules/react-native/react.gradle android/node_modules/react-native/
           fi
 
       - name: Build APK
@@ -63,3 +62,118 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      # ⭐⭐⭐ সম্পূর্ণ সোর্স কোড ব্যাকআপ - নতুন সংযোজন ⭐⭐⭐
+      
+      - name: Prepare source code backup
+        run: |
+          # ব্যাকআপের জন্য একটি ডিরেক্টরি তৈরি
+          mkdir -p source-backup
+          
+          # গুরুত্বপূর্ণ ফাইল ও ফোল্ডার কপি (node_modules ও build ফোল্ডার বাদে)
+          cp -r android source-backup/ 2>/dev/null || true
+          cp -r src source-backup/ 2>/dev/null || true
+          cp -r components source-backup/ 2>/dev/null || true
+          cp -r screens source-backup/ 2>/dev/null || true
+          cp -r utils source-backup/ 2>/dev/null || true
+          cp -r hooks source-backup/ 2>/dev/null || true
+          cp -r constants source-backup/ 2>/dev/null || true
+          cp -r assets source-backup/ 2>/dev/null || true
+          cp -r ios source-backup/ 2>/dev/null || true
+          
+          # রুট ফাইলগুলো কপি
+          cp *.js source-backup/ 2>/dev/null || true
+          cp *.json source-backup/ 2>/dev/null || true
+          cp *.md source-backup/ 2>/dev/null || true
+          cp .env* source-backup/ 2>/dev/null || true
+          cp .babelrc* source-backup/ 2>/dev/null || true
+          cp .eslintrc* source-backup/ 2>/dev/null || true
+          cp .prettierrc* source-backup/ 2>/dev/null || true
+          cp .watchmanconfig* source-backup/ 2>/dev/null || true
+          cp metro.config.js source-backup/ 2>/dev/null || true
+          cp app.json source-backup/ 2>/dev/null || true
+          cp index.js source-backup/ 2>/dev/null || true
+          
+          # ব্যাকআপ জিপ করুন
+          cd source-backup
+          tar -czf ../full-source-backup-${{ github.sha }}.tar.gz .
+          cd ..
+
+      - name: Upload full source code backup
+        uses: actions/upload-artifact@v4
+        if: always()  # বিল্ড সফল বা ব্যর্থ উভয় ক্ষেত্রেই ব্যাকআপ রাখবে
+        with:
+          name: full-source-backup-${{ github.sha }}
+          path: full-source-backup-${{ github.sha }}.tar.gz
+          retention-days: 90  # ৯০ দিন পর্যন্ত রাখবে
+          if-no-files-found: warn
+
+      # 📁 ফোল্ডার ভিত্তিক আলাদা ব্যাকআপ
+      
+      - name: Upload Android source separately
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-source-backup-${{ github.sha }}
+          path: |
+            android/app/src/main/
+            android/app/build.gradle
+            android/build.gradle
+            android/settings.gradle
+            android/gradle.properties
+            !android/app/src/main/assets/index.android.bundle
+            !**/build/
+          retention-days: 90
+
+      - name: Upload React Native source separately
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: react-source-backup-${{ github.sha }}
+          path: |
+            src/
+            components/
+            screens/
+            utils/
+            hooks/
+            constants/
+            App.js
+            index.js
+            package.json
+          retention-days: 90
+
+      # 📝 ব্যাকআপের তথ্য সংরক্ষণ
+      
+      - name: Save backup information
+        run: |
+          echo "=== Backup Information ===" > backup-info.txt
+          echo "Commit SHA: ${{ github.sha }}" >> backup-info.txt
+          echo "Commit Message: ${{ github.event.head_commit.message }}" >> backup-info.txt
+          echo "Build Date: $(date)" >> backup-info.txt
+          echo "Branch: ${{ github.ref_name }}" >> backup-info.txt
+          echo "Workflow: ${{ github.workflow }}" >> backup-info.txt
+          echo "========================" >> backup-info.txt
+          
+          # ফাইল লিস্ট সংরক্ষণ
+          find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/build/*" -not -path "*/dist/*" | sort > file-list.txt
+          
+          # গুরুত্বপূর্ণ ফাইলের কন্টেন্টের স্যাম্পল সংরক্ষণ
+          echo "=== Important Files Content Samples ===" >> important-samples.txt
+          for file in android/app/src/main/AndroidManifest.xml android/app/build.gradle package.json App.js; do
+            if [ -f "$file" ]; then
+              echo "--- $file ---" >> important-samples.txt
+              head -50 "$file" >> important-samples.txt
+              echo "" >> important-samples.txt
+            fi
+          done
+
+      - name: Upload backup information
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backup-info-${{ github.sha }}
+          path: |
+            backup-info.txt
+            file-list.txt
+            important-samples.txt
+          retention-days: 90
