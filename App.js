@@ -1,11 +1,24 @@
-import React from "react";
-import { Text, View, StyleSheet } from "react-native";
+import React from 'react';
+import { View, Text, Button, NativeModules, StyleSheet } from 'react-native';
+
+const { OverlayModule } = NativeModules;
 
 export default function App() {
+
+  const startBubble = () => {
+    OverlayModule.startBubble();
+  };
+
+  const stopBubble = () => {
+    OverlayModule.stopBubble();
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🚀 Hello from Termux React App!</Text>
-      <Text style={styles.subtitle}>Running directly without Acode 🎉</Text>
+      <Text style={styles.title}>Bubble Overlay App</Text>
+      <Button title="Start Bubble" onPress={startBubble} />
+      <View style={{ height: 20 }} />
+      <Button title="Stop Bubble" onPress={stopBubble} />
     </View>
   );
 }
@@ -13,18 +26,11 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#0a192f",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 22,
-    color: "#64ffda",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#ccd6f6",
+    fontSize: 20,
+    marginBottom: 20,
   },
 });
-
