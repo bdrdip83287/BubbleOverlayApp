@@ -41,12 +41,30 @@ jobs:
         run: |
           npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
+      # ✅ ফিক্স: React Native Android path সঠিকভাবে তৈরি করুন
       - name: Fix React Native Android path
         run: |
+          echo "=== 📁 Creating React Native Android symlink ==="
+          # প্রয়োজনীয় ডিরেক্টরি তৈরি
           mkdir -p android/node_modules/react-native
-          if [ ! -e android/node_modules/react-native/react.gradle ]; then
-            ln -sf ../../../node_modules/react-native/react.gradle android/node_modules/react-native/
+          
+          # ReactAndroid ফোল্ডারের জন্য symlink তৈরি
+          if [ ! -e android/node_modules/react-native/ReactAndroid ]; then
+            ln -sf ../../../node_modules/react-native/ReactAndroid android/node_modules/react-native/ReactAndroid
+            echo "✅ Created symlink for ReactAndroid"
           fi
+          
+          # react.gradle ফাইলের জন্য symlink তৈরি
+          if [ ! -e android/node_modules/react-native/react.gradle ]; then
+            ln -sf ../../../node_modules/react-native/react.gradle android/node_modules/react-native/react.gradle
+            echo "✅ Created symlink for react.gradle"
+          fi
+          
+          # ডিরেক্টরি স্ট্রাকচার চেক
+          echo "=== 📁 Directory structure ==="
+          ls -la android/node_modules/ || echo "android/node_modules not found"
+          ls -la android/node_modules/react-native/ 2>/dev/null || echo "react-native symlink not found"
+          ls -la android/node_modules/react-native/ReactAndroid/ 2>/dev/null || echo "ReactAndroid symlink not found"
 
       - name: Build APK
         run: |
