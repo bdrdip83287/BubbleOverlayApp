@@ -6,7 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
-import android.graphics.drawable.Icon
+import android.graphics.Point
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -103,7 +103,7 @@ class FloatingBubbleService : Service() {
             WindowManager.LayoutParams(
                 150,
                 150,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,  // ✅ This is correct for system overlay
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
             )
@@ -111,7 +111,7 @@ class FloatingBubbleService : Service() {
             WindowManager.LayoutParams(
                 150,
                 150,
-                WindowManager.LayoutParams.TYPE_PHONE,
+                WindowManager.LayoutParams.TYPE_PHONE,  // ✅ For older Android versions
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
             )

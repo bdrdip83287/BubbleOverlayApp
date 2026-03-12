@@ -1389,13 +1389,13 @@ const startFloatingBubble = useCallback(async () => {
         if (OverlayModule) {
             const result = await OverlayModule.startBubble();
             console.log('Bubble started:', result);
-            Alert.alert('Success', 'Floating bubble activated!');
+            // শুধু সফল হলে toast দেখান, alert নয়
+            Toast.show('Floating bubble activated!', Toast.SHORT);
         } else {
-            Alert.alert('Error', 'Overlay module not available');
+            console.log('Overlay module not available');
         }
     } catch (error) {
         console.error('Start bubble error:', error);
-        Alert.alert('Error', 'Failed to start bubble: ' + error.message);
     }
 }, []);
 
@@ -1405,7 +1405,6 @@ const stopFloatingBubble = useCallback(async () => {
         if (OverlayModule) {
             const result = await OverlayModule.stopBubble();
             console.log('Bubble stopped:', result);
-            Alert.alert('Success', 'Floating bubble closed!');
         }
     } catch (error) {
         console.error('Stop bubble error:', error);
@@ -2376,8 +2375,10 @@ const handleDestroy = () => {
         }
     }
 
-    // ✅ বাবল বন্ধ করার জন্য এই লাইন যোগ করুন (নিচের লাইনটি যোগ করুন)
-    stopFloatingBubble();
+    // ✅ বাবল বন্ধ করার জন্য - stopFloatingBubble কল করুন
+    if (typeof stopFloatingBubble === 'function') {
+        stopFloatingBubble();
+    }
 
     setShowNote(false);
     setActiveNoteId(null);
