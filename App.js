@@ -549,6 +549,7 @@ export default function App() {
     const [showNote, setShowNote] = useState(false);
     const [enableNotification, setEnableNotification] = useState(false);
     const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+    const [hasOverlayPermission, setHasOverlayPermission] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [history, setHistory] = useState({ past: [], current: '', future: [] });
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -1381,6 +1382,7 @@ export default function App() {
     }, []);
     
     // --- Overlay Module functions ---
+// --- Overlay Module functions ---
 const startFloatingBubble = useCallback(async () => {
     try {
         const { OverlayModule } = require('react-native').NativeModules;
