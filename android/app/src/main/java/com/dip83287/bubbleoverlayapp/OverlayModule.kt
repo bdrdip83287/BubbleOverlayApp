@@ -8,7 +8,6 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.Promise
-import android.widget.Toast
 
 class OverlayModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
@@ -40,13 +39,7 @@ class OverlayModule(reactContext: ReactApplicationContext) : ReactContextBaseJav
 
             // Start floating bubble service
             val serviceIntent = Intent(context, FloatingBubbleService::class.java)
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
-            }
-
+            context.startService(serviceIntent)
             promise.resolve("Bubble started successfully")
         } catch (e: Exception) {
             promise.reject("ERROR", e.message ?: "Unknown error")

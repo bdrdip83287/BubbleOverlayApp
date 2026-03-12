@@ -54,7 +54,7 @@ jobs:
             echo "✅ Created symlink for ReactAndroid"
           fi
           
-          # react.gradle ফাইলের জন্য symlink তৈরি
+          
           if [ ! -e android/node_modules/react-native/react.gradle ]; then
             ln -sf ../../../node_modules/react-native/react.gradle android/node_modules/react-native/react.gradle
             echo "✅ Created symlink for react.gradle"

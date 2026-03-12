@@ -1379,6 +1379,52 @@ export default function App() {
             useNativeDriver: true,
         }).start();
     }, []);
+    
+    // --- Overlay Module functions ---
+const startFloatingBubble = useCallback(async () => {
+    try {
+        const { OverlayModule } = require('react-native').NativeModules;
+        if (OverlayModule) {
+            const result = await OverlayModule.startBubble();
+            console.log('Bubble started:', result);
+            Alert.alert('Success', 'Floating bubble activated!');
+        } else {
+            Alert.alert('Error', 'Overlay module not available');
+        }
+    } catch (error) {
+        console.error('Start bubble error:', error);
+        Alert.alert('Error', 'Failed to start bubble: ' + error.message);
+    }
+}, []);
+
+const stopFloatingBubble = useCallback(async () => {
+    try {
+        const { OverlayModule } = require('react-native').NativeModules;
+        if (OverlayModule) {
+            const result = await OverlayModule.stopBubble();
+            console.log('Bubble stopped:', result);
+            Alert.alert('Success', 'Floating bubble closed!');
+        }
+    } catch (error) {
+        console.error('Stop bubble error:', error);
+    }
+}, []);
+
+const checkOverlayPermission = useCallback(async () => {
+    try {
+        const { OverlayModule } = require('react-native').NativeModules;
+        if (OverlayModule) {
+            const hasPermission = await OverlayModule.checkOverlayPermission();
+            console.log('Has overlay permission:', hasPermission);
+            setHasOverlayPermission(hasPermission);
+            return hasPermission;
+        }
+        return false;
+    } catch (error) {
+        console.error('Check permission error:', error);
+        return false;
+    }
+}, []);
 
     const hideDeleteConfirmation = useCallback(() => {
         Animated.timing(deleteConfirmAnim, {
@@ -2315,26 +2361,29 @@ export default function App() {
         });
     };
 
-    const handleDestroy = () => {
-        if (isAnimatingClose.current) return;
+const handleDestroy = () => {
+    if (isAnimatingClose.current) return;
 
-        if (activeNoteId !== null && activeNote) {
-            if (!isViewingMode) {
-                savePositions();
-                if (activeNote.content !== history.current) {
-                    updateActiveNoteState(history.current, false);
-                }
-                setIsViewingMode(true);
+    if (activeNoteId !== null && activeNote) {
+        if (!isViewingMode) {
+            savePositions();
+            if (activeNote.content !== history.current) {
+                updateActiveNoteState(history.current, false);
             }
+            setIsViewingMode(true);
         }
+    }
 
-        setShowNote(false);
-        setActiveNoteId(null);
-        isAnimatingClose.current = false;
+    // ✅ বাবল বন্ধ করার জন্য এই লাইন যোগ করুন (নিচের লাইনটি যোগ করুন)
+    stopFloatingBubble();
 
-        setIsNoteTemporarilyUnlockedId(null);
-        currentScrollYRef.current = 0;
-    };
+    setShowNote(false);
+    setActiveNoteId(null);
+    isAnimatingClose.current = false;
+
+    setIsNoteTemporarilyUnlockedId(null);
+    currentScrollYRef.current = 0;
+};
 
     // --- Note Pan Responder ---
     const noteResponder = useRef(
@@ -2617,6 +2666,34 @@ export default function App() {
             }
         };
     }, []);
+    
+    useEffect(() => {
+    loadAllData();
+
+    // অ্যাপ স্টেট চেঞ্জ হ্যান্ডলার
+    const subscription = AppState.addEventListener('change', nextAppState => {
+        if (nextAppState === 'active') {
+            // অ্যাপ ফোরগ্রাউন্ডে এলে ডেটা রিফ্রেশ করতে পারেন
+            if (isAppLoaded) {
+                console.log('App came to foreground');
+            }
+        }
+    });
+
+    return () => {
+        subscription.remove();
+        if (scrollMomentumTimeoutRef.current) {
+            clearTimeout(scrollMomentumTimeoutRef.current);
+        }
+    };
+}, []);
+
+// ✅ অ্যাপ লোড হলে অটোমেটিক বাবল স্টার্ট করুন (যদি permission থাকে)  🔴 এই লাইন থেকে শুরু
+useEffect(() => {
+    if (isAppLoaded && hasOverlayPermission) {
+        startFloatingBubble();
+    }
+}, [isAppLoaded, hasOverlayPermission]);
 
     // *** View Mode এ ট্যাপ করে Edit Mode এ যাওয়া ***
     const handlePressInViewMode = () => {
