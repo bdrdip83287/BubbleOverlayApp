@@ -2641,12 +2641,42 @@ useEffect(() => {
     };
 }, []);
 
-// ✅ অ্যাপ লোড হলে অটোমেটিক বাবল স্টার্ট করুন (যদি permission থাকে)  🔴 এই লাইন থেকে শুরু
+// ✅ অ্যাপ লোড হলে Permission চেক করুন
+useEffect(() => {
+    if (isAppLoaded) {
+        checkOverlayPermission();
+    }
+}, [isAppLoaded]);
+
+// ✅ অ্যাপ লোড হলে এবং Permission থাকলে অটোমেটিক বাবল স্টার্ট করুন
 useEffect(() => {
     if (isAppLoaded && hasOverlayPermission) {
         startFloatingBubble();
     }
 }, [isAppLoaded, hasOverlayPermission]);
+
+// ✅ AppState change হলে Permission রিফ্রেশ করুন
+useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+        if (nextAppState === 'active') {
+            // অ্যাপ ফোরগ্রাউন্ডে এলে Permission আবার চেক করুন
+            checkOverlayPermission();
+        }
+    });
+
+    return () => {
+        subscription.remove();
+    };
+}, []);
+
+// *** View Mode এ ট্যাপ করে Edit Mode এ যাওয়া ***
+const handlePressInViewMode = () => {
+    const isNoteDisabled = activeNote?.isLocked === true && activeNoteId !== isNoteTemporarilyUnlockedId;
+
+    if (activeNote && !isNoteDisabled && isViewingMode) {
+        handleEnterEditMode();
+    }
+};
 
     // *** View Mode এ ট্যাপ করে Edit Mode এ যাওয়া ***
     const handlePressInViewMode = () => {
