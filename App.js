@@ -1389,15 +1389,25 @@ const startFloatingBubble = useCallback(async () => {
         if (OverlayModule) {
             const result = await OverlayModule.startBubble();
             console.log('Bubble started:', result);
-            // শুধু সফল হলে toast দেখান, alert নয়
+            
+            // সিস্টেম বাবল চালু হলে, React Native UI দেখান
+            setShowNote(true);
+            if (notes.length > 0) {
+                setActiveNoteId(notes[0].id);
+            }
+            
             Toast.show('Floating bubble activated!', Toast.SHORT);
         } else {
             console.log('Overlay module not available');
+            // Fallback to React Native bubble
+            setShowNote(true);
         }
     } catch (error) {
         console.error('Start bubble error:', error);
+        // Fallback to React Native bubble
+        setShowNote(true);
     }
-}, []);
+}, [notes]);
 
 const stopFloatingBubble = useCallback(async () => {
     try {
@@ -1928,6 +1938,10 @@ const checkOverlayPermission = useCallback(async () => {
             setIsSecurityQuestionSetupModalVisible(true);
         }
     };
+    
+    const openAppSettings = () => {
+    Linking.openSettings();
+};
 
     const handleVerifySecurityAnswer = async () => {
         if (securityAnswerInput.trim() === '') {
@@ -2585,8 +2599,29 @@ const handleDestroy = () => {
         };
     }, []);
     
-    useEffect(() => {
-    loadAllData();
+    // অ্যাপ লোড হলে Permission চেক করুন এবং বাবল স্টার্ট করুন
+useEffect(() => {
+    if (isAppLoaded) {
+        // Permission চেক করুন
+        checkOverlayPermission().then(hasPermission => {
+            console.log('Permission check result:', hasPermission);
+            if (hasPermission) {
+                // Permission থাকলে বাবল স্টার্ট করুন
+                startFloatingBubble();
+            } else {
+                // Permission না থাকলে গাইড দেখান
+                Alert.alert(
+                    'Permission Required',
+                    'Please enable "Display over other apps" permission to use floating bubble.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: openAppSettings }
+                    ]
+                );
+            }
+        });
+    }
+}, [isAppLoaded]);
 
     // অ্যাপ স্টেট চেঞ্জ হ্যান্ডলার
     const subscription = AppState.addEventListener('change', nextAppState => {
@@ -2676,10 +2711,9 @@ useEffect(() => {
 
     // --- Renders ---
     // --- Renders ---
+// --- Renders ---
 const renderBubble = () => {
-    // যদি permission না থাকে, কিছু দেখাবেন না
-    if (!hasOverlayPermission) return null;
-    
+    // সবসময় একটি ছোট বাটন দেখান যা সিস্টেম বাবল নিয়ন্ত্রণ করবে
     return (
         <TouchableOpacity
             style={[
@@ -2689,16 +2723,28 @@ const renderBubble = () => {
                 },
             ]}
             onPress={() => {
-                // বাটনে চাপ দিলে অ্যাপ খুলবে
-                startFloatingBubble();
+                // বাটনে চাপ দিলে সিস্টেম বাবল টগল করুন
+                if (hasOverlayPermission) {
+                    startFloatingBubble();
+                    setShowNote(true);
+                } else {
+                    Alert.alert(
+                        'Permission Required',
+                        'Please enable overlay permission first.',
+                        [
+                            { text: 'Cancel' },
+                            { text: 'Open Settings', onPress: openAppSettings }
+                        ]
+                    );
+                }
             }}
             onLongPress={() => {
                 // লং প্রেস করলে বাবল বন্ধ হবে
                 stopFloatingBubble();
-                Alert.alert('Bubble Closed', 'Floating bubble has been closed. Open app again to restart.');
+                Alert.alert('Bubble Closed', 'Floating bubble has been closed.');
             }}
         >
-            <Icon name="documents-outline" size={BUBBLE_SIZE * 0.5} color={settings.iconColor} />
+            <Icon name="chatbubble-ellipses-outline" size={BUBBLE_SIZE * 0.5} color={settings.iconColor} />
         </TouchableOpacity>
     );
 };
@@ -3940,38 +3986,40 @@ const renderBubble = () => {
     };
 
     return (
-        <View style={styles.container}>
-            <StatusBar hidden />
+    <View style={styles.container}>
+        <StatusBar hidden />
 
-            {/* Bubble or Note Window */}
-            {!showNote ? renderBubble() : (
-                <Animated.View
-                    style={[
-                        styles.note,
-                        {
-                            width: noteWidth,
-                            height: noteHeight,
-                            transform: [{ translateX: notePan.x }, { translateY: notePan.y }, { scale: scaleAnim }],
-                            opacity: settings.opacity,
-                            overflow: 'hidden'
-                        },
-                    ]}
-                >
-                    {renderNoteContent()}
-                </Animated.View>
-            )}
+        {/* সবসময় বাবল দেখান (ছোট বাটন) */}
+        {renderBubble()}
 
-            {renderDeleteConfirmation()}
-            {renderSettingsModal()}
-            {renderSetPasswordModal()}
-            {renderChangePasswordModal()}
-            {renderPasswordModal()}
-            {renderSecurityQuestionSetupModal()}
-            {renderSecurityQuestionModal()}
-            {renderRecoveryPasswordModal()}
-
-        </View>
-    );
+        {/* Note Window - শুধু showNote true হলে দেখান */}
+        {showNote && (
+            <Animated.View
+                style={[
+                    styles.note,
+                    {
+                        width: noteWidth,
+                        height: noteHeight,
+                        transform: [{ translateX: notePan.x }, { translateY: notePan.y }, { scale: scaleAnim }],
+                        opacity: settings.opacity,
+                        overflow: 'hidden'
+                    },
+                ]}
+            >
+                {renderNoteContent()}
+            </Animated.View>
+        )}
+        
+        {renderDeleteConfirmation()}
+        {renderSettingsModal()}
+        {renderSetPasswordModal()}
+        {renderChangePasswordModal()}
+        {renderPasswordModal()}
+        {renderSecurityQuestionSetupModal()}
+        {renderSecurityQuestionModal()}
+        {renderRecoveryPasswordModal()}
+    </View>
+);
 }
 
 // --- স্টাইলশিট (Styles) ---
