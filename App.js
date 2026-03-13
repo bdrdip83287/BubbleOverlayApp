@@ -18,8 +18,7 @@ import {
     TouchableOpacity,
     Platform,
     Share,
-    AppState,
-    Linking
+    AppState
 } from "react-native";
 import Slider from '@react-native-community/slider';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -550,7 +549,6 @@ export default function App() {
     const [showNote, setShowNote] = useState(false);
     const [enableNotification, setEnableNotification] = useState(false);
     const [darkModeEnabled, setDarkModeEnabled] = useState(false);
-    const [hasOverlayPermission, setHasOverlayPermission] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [history, setHistory] = useState({ past: [], current: '', future: [] });
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -1381,65 +1379,6 @@ export default function App() {
             useNativeDriver: true,
         }).start();
     }, []);
-    
-    // --- Overlay Module functions ---
-    const startFloatingBubble = useCallback(async () => {
-        try {
-            const { OverlayModule } = require('react-native').NativeModules;
-            if (OverlayModule) {
-                const result = await OverlayModule.startBubble();
-                console.log('Bubble started:', result);
-                
-                // সিস্টেম বাবল চালু হলে, React Native UI দেখান
-                setShowNote(true);
-                if (notes.length > 0) {
-                    setActiveNoteId(notes[0].id);
-                }
-                
-                Alert.alert('Floating bubble activated!');
-            } else {
-                console.log('Overlay module not available');
-                // Fallback to React Native bubble
-                setShowNote(true);
-            }
-        } catch (error) {
-            console.error('Start bubble error:', error);
-            // Fallback to React Native bubble
-            setShowNote(true);
-        }
-    }, [notes]);
-
-    const stopFloatingBubble = useCallback(async () => {
-        try {
-            const { OverlayModule } = require('react-native').NativeModules;
-            if (OverlayModule) {
-                const result = await OverlayModule.stopBubble();
-                console.log('Bubble stopped:', result);
-                
-                // React Native বাবলও বন্ধ করুন
-                setShowNote(false);
-                setActiveNoteId(null);
-            }
-        } catch (error) {
-            console.error('Stop bubble error:', error);
-        }
-    }, []);
-
-    const checkOverlayPermission = useCallback(async () => {
-        try {
-            const { OverlayModule } = require('react-native').NativeModules;
-            if (OverlayModule) {
-                const hasPermission = await OverlayModule.checkOverlayPermission();
-                console.log('Has overlay permission:', hasPermission);
-                setHasOverlayPermission(hasPermission);
-                return hasPermission;
-            }
-            return false;
-        } catch (error) {
-            console.error('Check permission error:', error);
-            return false;
-        }
-    }, []);
 
     const hideDeleteConfirmation = useCallback(() => {
         Animated.timing(deleteConfirmAnim, {
@@ -1456,10 +1395,6 @@ export default function App() {
         setNotes([createNewNote(width - 100, 400)]);
         Alert.alert("Success", "All notes have been deleted.");
     }, []);
-
-    const openAppSettings = () => {
-        Linking.openSettings();
-    };
 
     // --- উন্নত বাবল Pan Responder ---
     const bubbleResponder = useRef(
@@ -2149,23 +2084,111 @@ export default function App() {
 
     // --- Dragging, Resizing, and Minimizing Logic ---
     const openFromBubble = () => {
-        // সিস্টেম বাবল থেকে খোলার সময় React Native বাবল দেখাবেন না
-        // বরং সরাসরি অ্যাপ ওপেন করুন
-        
-        // যদি ইতিমধ্যে নোট দেখাচ্ছে, তাহলে সেটা বন্ধ করুন
-        if (showNote) {
-            handleDestroy();
+        const isListMode = activeNoteId === null;
+
+        let currentW, currentH, currentX, currentY;
+
+        if (openFromBubble.shouldResetPosition) {
+            openFromBubble.shouldResetPosition = false;
+
+            currentW = DEFAULT_NOTE_WIDTH;
+            currentH = DEFAULT_NOTE_HEIGHT;
+            currentX = (width - DEFAULT_NOTE_WIDTH) / 2;
+            currentY = (height - DEFAULT_NOTE_HEIGHT) / 3;
+
+            if (notes.length > 0) {
+                setNotes(prevNotes =>
+                    prevNotes.map((n, i) =>
+                        i === 0
+                            ? { ...n, lastX: currentX, lastY: currentY, lastW: currentW, lastH: currentH }
+                            : n
+                    )
+                );
+            }
+        } else if (!openFromBubble.hasOpenedOnce) {
+            openFromBubble.hasOpenedOnce = true;
+
+            currentW = DEFAULT_NOTE_WIDTH;
+            currentH = DEFAULT_NOTE_HEIGHT;
+            currentX = (width - DEFAULT_NOTE_WIDTH) / 2;
+            currentY = (height - DEFAULT_NOTE_HEIGHT) / 3;
+
+            setNotes(prevNotes =>
+                prevNotes.map((n, i) =>
+                    i === 0
+                        ? { ...n, lastX: currentX, lastY: currentY, lastW: currentW, lastH: currentH }
+                        : n
+                )
+            );
+        } else if (activeNote && notePositionBeforeMinimizeRef.current.x !== undefined) {
+            currentW = notePositionBeforeMinimizeRef.current.width;
+            currentH = notePositionBeforeMinimizeRef.current.height;
+            currentX = notePositionBeforeMinimizeRef.current.x;
+            currentY = notePositionBeforeMinimizeRef.current.y;
+        } else if (activeNote) {
+            currentW = activeNote.lastW || DEFAULT_NOTE_WIDTH;
+            currentH = activeNote.lastH || DEFAULT_NOTE_HEIGHT;
+            currentX = activeNote.lastX || (width - DEFAULT_NOTE_WIDTH) / 2;
+            currentY = activeNote.lastY || (height - DEFAULT_NOTE_HEIGHT) / 3;
+        } else if (notePositionBeforeMinimizeRef.current.x !== undefined) {
+            currentW = notePositionBeforeMinimizeRef.current.width;
+            currentH = notePositionBeforeMinimizeRef.current.height;
+            currentX = notePositionBeforeMinimizeRef.current.x;
+            currentY = notePositionBeforeMinimizeRef.current.y;
+        } else {
+            currentW = DEFAULT_NOTE_WIDTH;
+            currentH = DEFAULT_NOTE_HEIGHT;
+            currentX = (width - DEFAULT_NOTE_WIDTH) / 2;
+            currentY = (height - DEFAULT_NOTE_HEIGHT) / 3;
         }
-        
-        // বাবল বন্ধ করুন (সিস্টেম বাবল চালু থাকবে)
-        stopFloatingBubble();
-        
-        // অ্যাপের কন্টেন্ট দেখান
+
+        noteWidth.setValue(currentW);
+        noteHeight.setValue(currentH);
+
+        const bubbleCenterX = bubblePan.x.__getValue() + BUBBLE_SIZE / 2;
+        const bubbleCenterY = bubblePan.y.__getValue() + BUBBLE_SIZE / 2;
+
+        notePan.setValue({
+            x: bubbleCenterX - currentW / 2,
+            y: bubbleCenterY - currentH / 2,
+        });
+
+        scaleAnim.setValue(0.5);
+        opacityAnim.setValue(0.2);
+
         setShowNote(true);
-        setActiveNoteId(notes[0]?.id || null);
-        
-        // Toast দেখান
-        Alert.alert('Floating Bubble', 'Bubble is active. Long press to close.');
+
+        // স্মুথ অ্যানিমেশন যোগ
+        Animated.parallel([
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: false,
+                restSpeedThreshold: 0.1,
+                restDisplacementThreshold: 0.1
+            }),
+            Animated.spring(opacityAnim, {
+                toValue: settings.opacity,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: false,
+                restSpeedThreshold: 0.1,
+                restDisplacementThreshold: 0.1
+            }),
+            Animated.spring(notePan, {
+                toValue: { x: currentX, y: currentY },
+                friction: 8,
+                tension: 40,
+                useNativeDriver: false,
+                restSpeedThreshold: 0.1,
+                restDisplacementThreshold: 0.1
+            }),
+        ]).start();
+
+        if (activeNoteId !== null) {
+            setIsViewingMode(true);
+        }
     };
 
     const handleClose = (isMinimize = false, isBackToNotesList = false) => {
@@ -2305,10 +2328,6 @@ export default function App() {
             }
         }
 
-        // ✅ সিস্টেম বাবল বন্ধ করুন
-        stopFloatingBubble();
-
-        // React Native বাবল বন্ধ করুন
         setShowNote(false);
         setActiveNoteId(null);
         isAnimatingClose.current = false;
@@ -2355,7 +2374,6 @@ export default function App() {
             },
         })
     ).current;
-    
     // সেটিংস ওপেন ফাংশন (আইকন ট্যাপে)
     const handleSettingsOpen = () => {
         setIsSettingsOpening(true);
@@ -2600,52 +2618,6 @@ export default function App() {
         };
     }, []);
 
-    // অ্যাপ লোড হলে Permission চেক করুন এবং বাবল স্টার্ট করুন
-    useEffect(() => {
-        if (isAppLoaded) {
-            // Permission চেক করুন
-            checkOverlayPermission().then(hasPermission => {
-                console.log('Permission check result:', hasPermission);
-                if (hasPermission) {
-                    // Permission থাকলে বাবল স্টার্ট করুন
-                    startFloatingBubble();
-                } else {
-                    // Permission না থাকলে গাইড দেখান
-                    Alert.alert(
-                        'Permission Required',
-                        'Please enable "Display over other apps" permission to use floating bubble.',
-                        [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Open Settings', onPress: openAppSettings }
-                        ]
-                    );
-                }
-            });
-        }
-    }, [isAppLoaded]);
-
-    // AppState change listener
-    useEffect(() => {
-        const subscription = AppState.addEventListener('change', nextAppState => {
-            if (nextAppState === 'active') {
-                if (isAppLoaded) {
-                    console.log('App came to foreground');
-                }
-            }
-        });
-
-        return () => {
-            subscription.remove();
-        };
-    }, [isAppLoaded]);
-
-    // অ্যাপ লোড হলে এবং Permission থাকলে অটোমেটিক বাবল স্টার্ট করুন
-    useEffect(() => {
-        if (isAppLoaded && hasOverlayPermission) {
-            startFloatingBubble();
-        }
-    }, [isAppLoaded, hasOverlayPermission]);
-
     // *** View Mode এ ট্যাপ করে Edit Mode এ যাওয়া ***
     const handlePressInViewMode = () => {
         const isNoteDisabled = activeNote?.isLocked === true && activeNoteId !== isNoteTemporarilyUnlockedId;
@@ -2708,42 +2680,20 @@ export default function App() {
     };
 
     // --- Renders ---
-    const renderBubble = () => {
-        // সবসময় একটি ছোট বাটন দেখান যা সিস্টেম বাবল নিয়ন্ত্রণ করবে
-        return (
-            <TouchableOpacity
-                style={[
-                    styles.bubble,
-                    {
-                        backgroundColor: settings.topBarColor,
-                    },
-                ]}
-                onPress={() => {
-                    // বাটনে চাপ দিলে সিস্টেম বাবল টগল করুন
-                    if (hasOverlayPermission) {
-                        startFloatingBubble();
-                        setShowNote(true);
-                    } else {
-                        Alert.alert(
-                            'Permission Required',
-                            'Please enable overlay permission first.',
-                            [
-                                { text: 'Cancel' },
-                                { text: 'Open Settings', onPress: openAppSettings }
-                            ]
-                        );
-                    }
-                }}
-                onLongPress={() => {
-                    // লং প্রেস করলে বাবল বন্ধ হবে
-                    stopFloatingBubble();
-                    Alert.alert('Bubble Closed', 'Floating bubble has been closed.');
-                }}
-            >
-                <Icon name="chatbubble-ellipses-outline" size={BUBBLE_SIZE * 0.5} color={settings.iconColor} />
-            </TouchableOpacity>
-        );
-    };
+    const renderBubble = () => (
+        <Animated.View
+            {...bubbleResponder.panHandlers}
+            style={[
+                styles.bubble,
+                {
+                    transform: bubblePan.getTranslateTransform(),
+                    backgroundColor: settings.topBarColor,
+                },
+            ]}
+        >
+            <Icon name="documents-outline" size={BUBBLE_SIZE * 0.5} color={settings.iconColor} />
+        </Animated.View>
+    );
 
     // --- সিকিউরিটি প্রশ্ন সেটআপ মোডাল ---
     const renderSecurityQuestionSetupModal = () => (
@@ -3985,11 +3935,8 @@ export default function App() {
         <View style={styles.container}>
             <StatusBar hidden />
 
-            {/* সবসময় বাবল দেখান (ছোট বাটন) */}
-            {renderBubble()}
-
-            {/* Note Window - শুধু showNote true হলে দেখান */}
-            {showNote && (
+            {/* Bubble or Note Window */}
+            {!showNote ? renderBubble() : (
                 <Animated.View
                     style={[
                         styles.note,
@@ -4005,7 +3952,7 @@ export default function App() {
                     {renderNoteContent()}
                 </Animated.View>
             )}
-            
+
             {renderDeleteConfirmation()}
             {renderSettingsModal()}
             {renderSetPasswordModal()}
@@ -4014,6 +3961,7 @@ export default function App() {
             {renderSecurityQuestionSetupModal()}
             {renderSecurityQuestionModal()}
             {renderRecoveryPasswordModal()}
+
         </View>
     );
 }
@@ -4173,10 +4121,12 @@ const styles = StyleSheet.create({
         padding: 0,
         textAlignVertical: "top",
     },
+
     dynamicLineHeight: {
         padding: 0,
         textAlignVertical: "top",
     },
+
     resizeHandle: {
         position: "absolute",
         width: 18,
@@ -4253,6 +4203,7 @@ const styles = StyleSheet.create({
         marginVertical: 10,
         width: '100%',
     },
+
     toggleLabel: {
         fontSize: 16,
         color: '#333',
@@ -4400,6 +4351,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#333',
     },
+    // উন্নত Styles for Fast Scroll
     fastScrollIndicator: {
         position: 'absolute',
         right: 6,
@@ -4423,6 +4375,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#666',
         marginVertical: 2,
     },
+    // ডিলিট কনফার্মেশন স্টাইল
     deleteConfirmOverlay: {
         position: 'absolute',
         bottom: 20,
@@ -4442,6 +4395,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 3,
     },
+    // সিকিউরিটি প্রশ্ন স্টাইলস
     securitySection: {
         width: '100%',
         marginVertical: 20,
@@ -4528,6 +4482,8 @@ const styles = StyleSheet.create({
         paddingVertical: 5,
         borderRadius: 5,
     },
+
+
     changeQuestionText: {
         color: 'white',
         fontSize: 11,
