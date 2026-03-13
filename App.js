@@ -1405,6 +1405,10 @@ const stopFloatingBubble = useCallback(async () => {
         if (OverlayModule) {
             const result = await OverlayModule.stopBubble();
             console.log('Bubble stopped:', result);
+            
+            // React Native বাবলও বন্ধ করুন
+            setShowNote(false);
+            setActiveNoteId(null);
         }
     } catch (error) {
         console.error('Stop bubble error:', error);
@@ -2131,112 +2135,24 @@ const checkOverlayPermission = useCallback(async () => {
 
     // --- Dragging, Resizing, and Minimizing Logic ---
     const openFromBubble = () => {
-        const isListMode = activeNoteId === null;
-
-        let currentW, currentH, currentX, currentY;
-
-        if (openFromBubble.shouldResetPosition) {
-            openFromBubble.shouldResetPosition = false;
-
-            currentW = DEFAULT_NOTE_WIDTH;
-            currentH = DEFAULT_NOTE_HEIGHT;
-            currentX = (width - DEFAULT_NOTE_WIDTH) / 2;
-            currentY = (height - DEFAULT_NOTE_HEIGHT) / 3;
-
-            if (notes.length > 0) {
-                setNotes(prevNotes =>
-                    prevNotes.map((n, i) =>
-                        i === 0
-                            ? { ...n, lastX: currentX, lastY: currentY, lastW: currentW, lastH: currentH }
-                            : n
-                    )
-                );
-            }
-        } else if (!openFromBubble.hasOpenedOnce) {
-            openFromBubble.hasOpenedOnce = true;
-
-            currentW = DEFAULT_NOTE_WIDTH;
-            currentH = DEFAULT_NOTE_HEIGHT;
-            currentX = (width - DEFAULT_NOTE_WIDTH) / 2;
-            currentY = (height - DEFAULT_NOTE_HEIGHT) / 3;
-
-            setNotes(prevNotes =>
-                prevNotes.map((n, i) =>
-                    i === 0
-                        ? { ...n, lastX: currentX, lastY: currentY, lastW: currentW, lastH: currentH }
-                        : n
-                )
-            );
-        } else if (activeNote && notePositionBeforeMinimizeRef.current.x !== undefined) {
-            currentW = notePositionBeforeMinimizeRef.current.width;
-            currentH = notePositionBeforeMinimizeRef.current.height;
-            currentX = notePositionBeforeMinimizeRef.current.x;
-            currentY = notePositionBeforeMinimizeRef.current.y;
-        } else if (activeNote) {
-            currentW = activeNote.lastW || DEFAULT_NOTE_WIDTH;
-            currentH = activeNote.lastH || DEFAULT_NOTE_HEIGHT;
-            currentX = activeNote.lastX || (width - DEFAULT_NOTE_WIDTH) / 2;
-            currentY = activeNote.lastY || (height - DEFAULT_NOTE_HEIGHT) / 3;
-        } else if (notePositionBeforeMinimizeRef.current.x !== undefined) {
-            currentW = notePositionBeforeMinimizeRef.current.width;
-            currentH = notePositionBeforeMinimizeRef.current.height;
-            currentX = notePositionBeforeMinimizeRef.current.x;
-            currentY = notePositionBeforeMinimizeRef.current.y;
-        } else {
-            currentW = DEFAULT_NOTE_WIDTH;
-            currentH = DEFAULT_NOTE_HEIGHT;
-            currentX = (width - DEFAULT_NOTE_WIDTH) / 2;
-            currentY = (height - DEFAULT_NOTE_HEIGHT) / 3;
-        }
-
-        noteWidth.setValue(currentW);
-        noteHeight.setValue(currentH);
-
-        const bubbleCenterX = bubblePan.x.__getValue() + BUBBLE_SIZE / 2;
-        const bubbleCenterY = bubblePan.y.__getValue() + BUBBLE_SIZE / 2;
-
-        notePan.setValue({
-            x: bubbleCenterX - currentW / 2,
-            y: bubbleCenterY - currentH / 2,
-        });
-
-        scaleAnim.setValue(0.5);
-        opacityAnim.setValue(0.2);
-
-        setShowNote(true);
-
-        // স্মুথ অ্যানিমেশন যোগ
-        Animated.parallel([
-            Animated.spring(scaleAnim, {
-                toValue: 1,
-                friction: 8,
-                tension: 40,
-                useNativeDriver: false,
-                restSpeedThreshold: 0.1,
-                restDisplacementThreshold: 0.1
-            }),
-            Animated.spring(opacityAnim, {
-                toValue: settings.opacity,
-                friction: 8,
-                tension: 40,
-                useNativeDriver: false,
-                restSpeedThreshold: 0.1,
-                restDisplacementThreshold: 0.1
-            }),
-            Animated.spring(notePan, {
-                toValue: { x: currentX, y: currentY },
-                friction: 8,
-                tension: 40,
-                useNativeDriver: false,
-                restSpeedThreshold: 0.1,
-                restDisplacementThreshold: 0.1
-            }),
-        ]).start();
-
-        if (activeNoteId !== null) {
-            setIsViewingMode(true);
-        }
-    };
+    // সিস্টেম বাবল থেকে খোলার সময় React Native বাবল দেখাবেন না
+    // বরং সরাসরি অ্যাপ ওপেন করুন
+    
+    // যদি ইতিমধ্যে নোট দেখাচ্ছে, তাহলে সেটা বন্ধ করুন
+    if (showNote) {
+        handleDestroy();
+    }
+    
+    // বাবল বন্ধ করুন (সিস্টেম বাবল চালু থাকবে)
+    stopFloatingBubble();
+    
+    // অ্যাপের কন্টেন্ট দেখান
+    setShowNote(true);
+    setActiveNoteId(notes[0]?.id || null);
+    
+    // Toast দেখান
+    Alert.alert('Floating Bubble', 'Bubble is active. Long press to close.');
+};
 
     const handleClose = (isMinimize = false, isBackToNotesList = false) => {
 
@@ -2375,11 +2291,10 @@ const handleDestroy = () => {
         }
     }
 
-    // ✅ বাবল বন্ধ করার জন্য - stopFloatingBubble কল করুন
-    if (typeof stopFloatingBubble === 'function') {
-        stopFloatingBubble();
-    }
+    // ✅ সিস্টেম বাবল বন্ধ করুন
+    stopFloatingBubble();
 
+    // React Native বাবল বন্ধ করুন
     setShowNote(false);
     setActiveNoteId(null);
     isAnimatingClose.current = false;
@@ -2760,20 +2675,33 @@ useEffect(() => {
     };
 
     // --- Renders ---
-    const renderBubble = () => (
-        <Animated.View
-            {...bubbleResponder.panHandlers}
+    // --- Renders ---
+const renderBubble = () => {
+    // যদি permission না থাকে, কিছু দেখাবেন না
+    if (!hasOverlayPermission) return null;
+    
+    return (
+        <TouchableOpacity
             style={[
                 styles.bubble,
                 {
-                    transform: bubblePan.getTranslateTransform(),
                     backgroundColor: settings.topBarColor,
                 },
             ]}
+            onPress={() => {
+                // বাটনে চাপ দিলে অ্যাপ খুলবে
+                startFloatingBubble();
+            }}
+            onLongPress={() => {
+                // লং প্রেস করলে বাবল বন্ধ হবে
+                stopFloatingBubble();
+                Alert.alert('Bubble Closed', 'Floating bubble has been closed. Open app again to restart.');
+            }}
         >
             <Icon name="documents-outline" size={BUBBLE_SIZE * 0.5} color={settings.iconColor} />
-        </Animated.View>
+        </TouchableOpacity>
     );
+};
 
     // --- সিকিউরিটি প্রশ্ন সেটআপ মোডাল ---
     const renderSecurityQuestionSetupModal = () => (
