@@ -42,7 +42,8 @@
 
       </activity>
 
-      <!-- Floating Bubble Service with special use type -->
+      <!-- Floating Bubble Service with special use type 
+      
       <service
         android:name=".FloatingBubbleService"
         android:enabled="true"
@@ -53,7 +54,7 @@
         <property
             android:name="android.foreground_service_type_special_use"
             android:value="floating_bubble" />
-      </service>
+      </service> -->
 
     </application>
 </manifest>
