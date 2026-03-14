@@ -35,6 +35,7 @@ class FloatingBubbleService : Service() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         createNotificationChannel()
+        startForeground(NOTIFICATION_ID, createNotification())
     }
 
     private fun createNotificationChannel() {
@@ -52,23 +53,6 @@ class FloatingBubbleService : Service() {
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(this)) {
-                stopSelf()
-                return START_NOT_STICKY
-            }
-        }
-
-        startForeground(NOTIFICATION_ID, createNotification())
-        
-        if (bubbleView == null) {
-            createBubbleView()
-        }
-        
-        return START_STICKY
-    }
-
     private fun createNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Floating Bubble Active")
@@ -77,6 +61,21 @@ class FloatingBubbleService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+        }
+
+        if (bubbleView == null) {
+            createBubbleView()
+        }
+        
+        return START_STICKY
     }
 
     private fun createBubbleView() {

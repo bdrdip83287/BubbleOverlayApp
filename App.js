@@ -843,22 +843,53 @@ export default function App() {
 
     const openAppSettings = () => { Linking.openSettings(); };
 
-    // ✅ শুধু permission check রাখা হয়েছে
-    const checkOverlayPermission = useCallback(async () => {
-        try {
-            const { OverlayModule } = require('react-native').NativeModules;
-            if (OverlayModule) {
-                const hasPermission = await OverlayModule.checkOverlayPermission();
-                console.log('Has overlay permission:', hasPermission);
-                setHasOverlayPermission(hasPermission);
-                return hasPermission;
-            }
-            return false;
-        } catch (error) {
-            console.error('Check permission error:', error);
-            return false;
+
+    // --- Overlay Module functions ---
+const startFloatingBubble = useCallback(async () => {
+    try {
+        const { OverlayModule } = require('react-native').NativeModules;
+        if (OverlayModule) {
+            const result = await OverlayModule.startBubble();
+            console.log('Bubble started:', result);
+            return true;
         }
-    }, []);
+        return false;
+    } catch (error) {
+        console.error('Start bubble error:', error);
+        return false;
+    }
+}, []);
+
+const stopFloatingBubble = useCallback(async () => {
+    try {
+        const { OverlayModule } = require('react-native').NativeModules;
+        if (OverlayModule) {
+            const result = await OverlayModule.stopBubble();
+            console.log('Bubble stopped:', result);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Stop bubble error:', error);
+        return false;
+    }
+}, []);
+
+const checkOverlayPermission = useCallback(async () => {
+    try {
+        const { OverlayModule } = require('react-native').NativeModules;
+        if (OverlayModule) {
+            const hasPermission = await OverlayModule.checkOverlayPermission();
+            console.log('Has overlay permission:', hasPermission);
+            setHasOverlayPermission(hasPermission);
+            return hasPermission;
+        }
+        return false;
+    } catch (error) {
+        console.error('Check permission error:', error);
+        return false;
+    }
+}, []);
 
     // ✅ অ্যাপ লোড হলে শুধু permission চেক করুন
     useEffect(() => {
