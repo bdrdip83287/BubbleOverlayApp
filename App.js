@@ -845,12 +845,12 @@ export default function App() {
 
 
     // --- Overlay Module functions ---
+// --- Overlay Module functions ---
 const startFloatingBubble = useCallback(async () => {
     try {
         const { OverlayModule } = require('react-native').NativeModules;
         if (OverlayModule) {
-            const noteCount = notes.length;
-            const result = await OverlayModule.startBubble(noteCount);
+            const result = await OverlayModule.startBubble();
             console.log('Bubble started:', result);
             return true;
         }
@@ -859,17 +859,8 @@ const startFloatingBubble = useCallback(async () => {
         console.error('Start bubble error:', error);
         return false;
     }
-}, [notes]);
+}, []);
 
-// নোট কাউন্ট পরিবর্তন হলে নেটিভ বাবল আপডেট করুন
-useEffect(() => {
-    if (isAppLoaded && hasOverlayPermission && notes.length > 0) {
-        const { OverlayModule } = require('react-native').NativeModules;
-        if (OverlayModule) {
-            OverlayModule.updateNoteCount(notes.length);
-        }
-    }
-}, [notes, isAppLoaded, hasOverlayPermission]);
 
 const stopFloatingBubble = useCallback(async () => {
     try {
@@ -885,6 +876,7 @@ const stopFloatingBubble = useCallback(async () => {
         return false;
     }
 }, []);
+
 
 const checkOverlayPermission = useCallback(async () => {
     try {
@@ -923,6 +915,17 @@ useEffect(() => {
         });
     }
 }, [isAppLoaded]);
+
+// নোট কাউন্ট পরিবর্তন হলে নেটিভ বাবল আপডেট করুন
+useEffect(() => {
+    if (isAppLoaded && hasOverlayPermission && notes.length > 0) {
+        const { OverlayModule } = require('react-native').NativeModules;
+        if (OverlayModule) {
+            OverlayModule.updateNoteCount(notes.length);
+        }
+    }
+}, [notes, isAppLoaded, hasOverlayPermission]);
+
 
     const bubbleResponder = useRef(PanResponder.create({
         onStartShouldSetPanResponder: () => true,
