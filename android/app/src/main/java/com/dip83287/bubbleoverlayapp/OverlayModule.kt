@@ -18,14 +18,12 @@ class OverlayModule(reactContext: ReactApplicationContext) : ReactContextBaseJav
     override fun getName(): String = NAME
 
     @ReactMethod
-    fun startBubble(promise: Promise) {
+    fun startBubble(noteCount: Int, promise: Promise) {
         try {
             val context = reactApplicationContext
 
-            // Check permission first
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (!Settings.canDrawOverlays(context)) {
-                    // Open permission settings
                     val intent = Intent(
                         Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                         Uri.parse("package:${context.packageName}")
@@ -37,9 +35,15 @@ class OverlayModule(reactContext: ReactApplicationContext) : ReactContextBaseJav
                 }
             }
 
-            // Start floating bubble service
             val serviceIntent = Intent(context, FloatingBubbleService::class.java)
-            context.startService(serviceIntent)
+            serviceIntent.putExtra("noteCount", noteCount)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
+            }
+
             promise.resolve("Bubble started successfully")
         } catch (e: Exception) {
             promise.reject("ERROR", e.message ?: "Unknown error")
@@ -53,6 +57,25 @@ class OverlayModule(reactContext: ReactApplicationContext) : ReactContextBaseJav
             val serviceIntent = Intent(context, FloatingBubbleService::class.java)
             context.stopService(serviceIntent)
             promise.resolve("Bubble stopped successfully")
+        } catch (e: Exception) {
+            promise.reject("ERROR", e.message ?: "Unknown error")
+        }
+    }
+
+    @ReactMethod
+    fun updateNoteCount(noteCount: Int, promise: Promise) {
+        try {
+            // Update the running service with new note count
+            val context = reactApplicationContext
+            val serviceIntent = Intent(context, FloatingBubbleService::class.java)
+            serviceIntent.putExtra("noteCount", noteCount)
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
+            }
+            promise.resolve("Note count updated")
         } catch (e: Exception) {
             promise.reject("ERROR", e.message ?: "Unknown error")
         }

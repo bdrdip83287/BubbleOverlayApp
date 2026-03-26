@@ -849,7 +849,8 @@ const startFloatingBubble = useCallback(async () => {
     try {
         const { OverlayModule } = require('react-native').NativeModules;
         if (OverlayModule) {
-            const result = await OverlayModule.startBubble();
+            const noteCount = notes.length;
+            const result = await OverlayModule.startBubble(noteCount);
             console.log('Bubble started:', result);
             return true;
         }
@@ -858,7 +859,17 @@ const startFloatingBubble = useCallback(async () => {
         console.error('Start bubble error:', error);
         return false;
     }
-}, []);
+}, [notes]);
+
+// নোট কাউন্ট পরিবর্তন হলে নেটিভ বাবল আপডেট করুন
+useEffect(() => {
+    if (isAppLoaded && hasOverlayPermission && notes.length > 0) {
+        const { OverlayModule } = require('react-native').NativeModules;
+        if (OverlayModule) {
+            OverlayModule.updateNoteCount(notes.length);
+        }
+    }
+}, [notes, isAppLoaded, hasOverlayPermission]);
 
 const stopFloatingBubble = useCallback(async () => {
     try {
@@ -891,24 +902,27 @@ const checkOverlayPermission = useCallback(async () => {
     }
 }, []);
 
-    // ✅ অ্যাপ লোড হলে শুধু permission চেক করুন
-    useEffect(() => {
-        if (isAppLoaded) {
-            checkOverlayPermission().then(hasPermission => {
-                console.log('Permission check result:', hasPermission);
-                if (!hasPermission) {
-                    Alert.alert(
-                        'Permission Required',
-                        'Please enable "Display over other apps" permission to use floating bubble.',
-                        [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Open Settings', onPress: openAppSettings }
-                        ]
-                    );
-                }
-            });
-        }
-    }, [isAppLoaded]);
+// অ্যাপ লোড হলে Permission চেক করুন এবং নেটিভ বাবল স্টার্ট করুন
+useEffect(() => {
+    if (isAppLoaded) {
+        checkOverlayPermission().then(hasPermission => {
+            console.log('Permission check result:', hasPermission);
+            if (hasPermission) {
+                // নেটিভ বাবল স্টার্ট করুন
+                startFloatingBubble();
+            } else {
+                Alert.alert(
+                    'Permission Required',
+                    'Please enable "Display over other apps" permission to use floating bubble.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: openAppSettings }
+                    ]
+                );
+            }
+        });
+    }
+}, [isAppLoaded]);
 
     const bubbleResponder = useRef(PanResponder.create({
         onStartShouldSetPanResponder: () => true,
@@ -1477,21 +1491,12 @@ const checkOverlayPermission = useCallback(async () => {
         );
     };
 
-    // ✅ এখানে মূল React Native বাবল রেন্ডার হচ্ছে
-    const renderBubble = () => (
-        <Animated.View
-            {...bubbleResponder.panHandlers}
-            style={[
-                styles.bubble,
-                {
-                    transform: bubblePan.getTranslateTransform(),
-                    backgroundColor: settings.topBarColor,
-                },
-            ]}
-        >
-            <Icon name="documents-outline" size={BUBBLE_SIZE * 0.5} color={settings.iconColor} />
-        </Animated.View>
-    );
+    // ✅ নেটিভ বাবল ব্যবহার করবে - React Native বাবল বন্ধ
+    const renderBubble = () => {
+        // নেটিভ বাবল ইতিমধ্যে FloatingBubbleService এর মাধ্যমে চালু আছে
+        // এখানে কিছু রেন্ডার করবেন না, কারণ এটি অ্যাপের ভিতরে বাবল দেখাবে
+        return null;
+    };
 
     const renderSecurityQuestionSetupModal = () => (
         <Modal animationType={isModalAnimating ? "slide" : "fade"} transparent visible={isSecurityQuestionSetupModalVisible} onRequestClose={handleSecurityQuestionClose}>
