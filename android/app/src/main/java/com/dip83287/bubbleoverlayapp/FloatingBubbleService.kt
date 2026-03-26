@@ -82,14 +82,14 @@ class FloatingBubbleService : Service() {
         // Simple bubble view
         bubbleView = ImageView(this).apply {
             setImageResource(android.R.drawable.ic_menu_edit)
-            setBackgroundColor(0xFFF9E79F.toInt()) // React Native bubble color
+            setBackgroundColor(red.toInt()) // React Native bubble color
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-            setPadding(20, 20, 20, 20)
+            setPadding(50, 20, 50, 20)
         }
 
         val layoutParams = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams(
-                150,
+                250,
                 150,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
@@ -97,7 +97,7 @@ class FloatingBubbleService : Service() {
             )
         } else {
             WindowManager.LayoutParams(
-                150,
+                250,
                 150,
                 WindowManager.LayoutParams.TYPE_PHONE,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
