@@ -843,8 +843,6 @@ export default function App() {
 
     const openAppSettings = () => { Linking.openSettings(); };
 
-
-    // --- Overlay Module functions ---
 // --- Overlay Module functions ---
 const startFloatingBubble = useCallback(async () => {
     try {
@@ -861,7 +859,6 @@ const startFloatingBubble = useCallback(async () => {
     }
 }, []);
 
-
 const stopFloatingBubble = useCallback(async () => {
     try {
         const { OverlayModule } = require('react-native').NativeModules;
@@ -876,7 +873,6 @@ const stopFloatingBubble = useCallback(async () => {
         return false;
     }
 }, []);
-
 
 const checkOverlayPermission = useCallback(async () => {
     try {
@@ -894,13 +890,12 @@ const checkOverlayPermission = useCallback(async () => {
     }
 }, []);
 
-// অ্যাপ লোড হলে Permission চেক করুন এবং নেটিভ বাবল স্টার্ট করুন
+// ✅ অ্যাপ লোড হলে Permission চেক করুন এবং নেটিভ বাবল স্টার্ট করুন
 useEffect(() => {
     if (isAppLoaded) {
         checkOverlayPermission().then(hasPermission => {
             console.log('Permission check result:', hasPermission);
             if (hasPermission) {
-                // নেটিভ বাবল স্টার্ট করুন
                 startFloatingBubble();
             } else {
                 Alert.alert(
@@ -916,15 +911,7 @@ useEffect(() => {
     }
 }, [isAppLoaded]);
 
-// নোট কাউন্ট পরিবর্তন হলে নেটিভ বাবল আপডেট করুন
-useEffect(() => {
-    if (isAppLoaded && hasOverlayPermission && notes.length > 0) {
-        const { OverlayModule } = require('react-native').NativeModules;
-        if (OverlayModule) {
-            OverlayModule.updateNoteCount(notes.length);
-        }
-    }
-}, [notes, isAppLoaded, hasOverlayPermission]);
+
 
 
     const bubbleResponder = useRef(PanResponder.create({

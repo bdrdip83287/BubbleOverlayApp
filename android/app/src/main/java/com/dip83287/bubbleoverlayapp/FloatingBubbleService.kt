@@ -56,7 +56,7 @@ class FloatingBubbleService : Service() {
     private fun createNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Floating Notes")
-            .setContentText("Tap to open, long press to close")
+            .setContentText("Tap to open notes")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
@@ -79,10 +79,10 @@ class FloatingBubbleService : Service() {
     }
 
     private fun createBubbleView() {
-        // Simple bubble view
+        // Create a simple bubble view that looks like React Native bubble
         bubbleView = ImageView(this).apply {
             setImageResource(android.R.drawable.ic_menu_edit)
-            setBackgroundColor(0xFFF9E79F.toInt()) // React Native bubble color
+            setBackgroundColor(0xFFF9E79F.toInt()) // Yellow color matching React Native
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(20, 20, 20, 20)
         }
@@ -90,15 +90,15 @@ class FloatingBubbleService : Service() {
         val layoutParams = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams(
                 100,
-                150,
+                100,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
             )
         } else {
             WindowManager.LayoutParams(
-                150,
-                150,
+                100,
+                100,
                 WindowManager.LayoutParams.TYPE_PHONE,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
@@ -109,26 +109,34 @@ class FloatingBubbleService : Service() {
         layoutParams.x = 100
         layoutParams.y = 300
 
+        var isDragging = false
+        var startX = 0
+        var startY = 0
+
         bubbleView?.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    initialX = layoutParams.x
-                    initialY = layoutParams.y
+                    startX = layoutParams.x
+                    startY = layoutParams.y
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
+                    isDragging = false
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    layoutParams.x = initialX + (event.rawX - initialTouchX).toInt()
-                    layoutParams.y = initialY + (event.rawY - initialTouchY).toInt()
+                    val dx = event.rawX - initialTouchX
+                    val dy = event.rawY - initialTouchY
+                    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                        isDragging = true
+                    }
+                    layoutParams.x = startX + dx.toInt()
+                    layoutParams.y = startY + dy.toInt()
                     windowManager.updateViewLayout(bubbleView!!, layoutParams)
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    val dx = event.rawX - initialTouchX
-                    val dy = event.rawY - initialTouchY
-                    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-                        // Click - open main app
+                    if (!isDragging) {
+                        // Click - open main app (React Native UI)
                         val intent = Intent(this, MainActivity::class.java)
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         startActivity(intent)
@@ -140,6 +148,7 @@ class FloatingBubbleService : Service() {
         }
 
         bubbleView?.setOnLongClickListener {
+            // Long press - close bubble
             Toast.makeText(this, "Floating notes closed", Toast.LENGTH_SHORT).show()
             stopSelf()
             true
