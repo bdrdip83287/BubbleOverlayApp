@@ -26,10 +26,10 @@ class MainActivity : ReactActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Just a toast to confirm the activity is loading
-        Toast.makeText(this, "Opening Floating Notes", Toast.LENGTH_SHORT).show()
+        // Show a toast to confirm activity is loading
+        Toast.makeText(this, "Opening Floating Notes...", Toast.LENGTH_SHORT).show()
         
-        // Request permission if not granted
+        // Check permission
         checkOverlayPermission()
     }
 
