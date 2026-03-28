@@ -26,6 +26,13 @@ class MainActivity : ReactActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Check if opened from bubble
+        val fromBubble = intent.getBooleanExtra("openFromBubble", false)
+        if (fromBubble) {
+            // React Native UI automatically loads, no extra action needed
+            Toast.makeText(this, "Opening Floating Notes...", Toast.LENGTH_SHORT).show()
+        }
+        
         // Request overlay permission on start
         requestOverlayPermission()
     }
@@ -33,7 +40,6 @@ class MainActivity : ReactActivity() {
     private fun requestOverlayPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (!Settings.canDrawOverlays(this)) {
-                // Show explanation dialog
                 AlertDialog.Builder(this)
                     .setTitle("Floating Bubble Permission Required")
                     .setMessage("This app needs 'Display over other apps' permission to show floating notes.")
@@ -45,7 +51,8 @@ class MainActivity : ReactActivity() {
                     }
                     .show()
             } else {
-                Toast.makeText(this, "✓ Permission already granted", Toast.LENGTH_SHORT).show()
+                // Permission already granted, no need to show toast every time
+                // Toast.makeText(this, "✓ Permission already granted", Toast.LENGTH_SHORT).show()
             }
         }
     }

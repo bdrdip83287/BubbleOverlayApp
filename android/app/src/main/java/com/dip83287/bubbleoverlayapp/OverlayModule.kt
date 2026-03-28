@@ -60,12 +60,10 @@ class OverlayModule(reactContext: ReactApplicationContext) : ReactContextBaseJav
         }
     }
 
-    // ✅ এই মেথডটি যোগ করুন
     @ReactMethod
     fun updateNoteCount(noteCount: Int, promise: Promise) {
         try {
             // Optional: update the bubble service with note count
-            // You can implement this if needed
             promise.resolve("Note count updated")
         } catch (e: Exception) {
             promise.reject("ERROR", e.message ?: "Unknown error")

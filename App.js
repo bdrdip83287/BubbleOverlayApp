@@ -890,12 +890,13 @@ const checkOverlayPermission = useCallback(async () => {
     }
 }, []);
 
-// ✅ অ্যাপ লোড হলে Permission চেক করুন এবং নেটিভ বাবল স্টার্ট করুন
+// অ্যাপ লোড হলে Permission চেক করুন এবং নেটিভ বাবল স্টার্ট করুন
 useEffect(() => {
     if (isAppLoaded) {
         checkOverlayPermission().then(hasPermission => {
             console.log('Permission check result:', hasPermission);
             if (hasPermission) {
+                // নেটিভ বাবল স্টার্ট করুন
                 startFloatingBubble();
             } else {
                 Alert.alert(
