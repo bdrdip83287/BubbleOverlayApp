@@ -677,6 +677,59 @@ export default function App() {
     const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
     const activeNote = notes.find(n => n.id === activeNoteId);
 
+    // --- Overlay Module functions (নেটিভ বাবলের জন্য) ---
+    const startFloatingBubble = useCallback(async () => {
+        try {
+            const { OverlayModule } = require('react-native').NativeModules;
+            if (OverlayModule) {
+                const result = await OverlayModule.startBubble();
+                console.log('Native bubble started:', result);
+                return true;
+            }
+            console.log('OverlayModule not available');
+            return false;
+        } catch (error) {
+            console.error('Start bubble error:', error);
+            return false;
+        }
+    }, []);
+
+    const stopFloatingBubble = useCallback(async () => {
+        try {
+            const { OverlayModule } = require('react-native').NativeModules;
+            if (OverlayModule) {
+                const result = await OverlayModule.stopBubble();
+                console.log('Native bubble stopped:', result);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Stop bubble error:', error);
+            return false;
+        }
+    }, []);
+
+    const checkOverlayPermission = useCallback(async () => {
+        try {
+            const { OverlayModule } = require('react-native').NativeModules;
+            if (OverlayModule) {
+                const hasPermission = await OverlayModule.checkOverlayPermission();
+                console.log('Overlay permission:', hasPermission);
+                return hasPermission;
+            }
+            return false;
+        } catch (error) {
+            console.error('Check permission error:', error);
+            return false;
+        }
+    }, []);
+
+    const openAppSettings = () => {
+        Linking.openSettings();
+    };
+
+
+
     // --- উন্নত স্ক্রলিং কনফিগারেশন ফাংশন ---
     const getEnhancedScrollProps = () => ({
         showsVerticalScrollIndicator: true,
@@ -2315,7 +2368,7 @@ export default function App() {
         });
     };
 
-    const handleDestroy = () => {
+        const handleDestroy = () => {
         if (isAnimatingClose.current) return;
 
         if (activeNoteId !== null && activeNote) {
@@ -2327,6 +2380,9 @@ export default function App() {
                 setIsViewingMode(true);
             }
         }
+
+        // ✅ নেটিভ বাবল বন্ধ করুন
+        stopFloatingBubble();
 
         setShowNote(false);
         setActiveNoteId(null);
@@ -2673,6 +2729,49 @@ export default function App() {
         });
         return () => subscription.remove();
     }, [notes, showNote, isAppLoaded]);
+    
+        // ✅ অ্যাপ লোড হলে নেটিভ বাবল স্টার্ট করুন
+    useEffect(() => {
+        if (isAppLoaded) {
+            checkOverlayPermission().then(hasPermission => {
+                if (hasPermission) {
+                    startFloatingBubble();
+                    console.log('✅ Native bubble started on app load');
+                } else {
+                    Alert.alert(
+                        'Permission Required',
+                        'Please enable "Display over other apps" permission for floating bubble.',
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Open Settings', onPress: openAppSettings }
+                        ]
+                    );
+                }
+            });
+        }
+    }, [isAppLoaded]);
+    
+        // ✅ নেটিভ বাবল থেকে অ্যাপ ওপেন হলে UI দেখান
+    useEffect(() => {
+        if (isAppLoaded && notes.length > 0 && !showNote) {
+            setActiveNoteId(notes[0].id);
+            setShowNote(true);
+            setIsViewingMode(true);
+            console.log('✅ Showing React Native UI');
+        }
+    }, [isAppLoaded, notes]);
+
+    // ✅ অ্যাপ ফোরগ্রাউন্ডে আসলে চেক করুন
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active' && isAppLoaded && notes.length > 0 && !showNote) {
+                setActiveNoteId(notes[0].id);
+                setShowNote(true);
+                setIsViewingMode(true);
+            }
+        });
+        return () => subscription.remove();
+    }, [notes, showNote, isAppLoaded]);
 
     // *** View Mode এ ট্যাপ করে Edit Mode এ যাওয়া ***
     const handlePressInViewMode = () => {
@@ -2735,21 +2834,6 @@ export default function App() {
         );
     };
 
-    // --- Renders ---
-    const renderBubble = () => (
-        <Animated.View
-            {...bubbleResponder.panHandlers}
-            style={[
-                styles.bubble,
-                {
-                    transform: bubblePan.getTranslateTransform(),
-                    backgroundColor: settings.topBarColor,
-                },
-            ]}
-        >
-            <Icon name="documents-outline" size={BUBBLE_SIZE * 0.5} color={settings.iconColor} />
-        </Animated.View>
-    );
 
     // --- সিকিউরিটি প্রশ্ন সেটআপ মোডাল ---
     const renderSecurityQuestionSetupModal = () => (
@@ -3987,12 +4071,13 @@ export default function App() {
         return renderNoteList();
     };
 
-    return (
+        return (
         <View style={styles.container}>
             <StatusBar hidden />
 
-            {/* Bubble or Note Window */}
-            {!showNote ? renderBubble() : (
+            {/* ✅ React Native বাবল সরিয়ে ফেলা হয়েছে - শুধু নেটিভ বাবল কাজ করবে */}
+            {/* {!showNote ? renderBubble() : ( */}
+            {showNote && (
                 <Animated.View
                     style={[
                         styles.note,
@@ -4017,7 +4102,6 @@ export default function App() {
             {renderSecurityQuestionSetupModal()}
             {renderSecurityQuestionModal()}
             {renderRecoveryPasswordModal()}
-
         </View>
     );
 }
