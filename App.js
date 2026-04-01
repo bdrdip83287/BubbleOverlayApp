@@ -2617,6 +2617,62 @@ export default function App() {
             }
         };
     }, []);
+    
+    
+    
+        // Cleanup intervals on unmount
+    useEffect(() => {
+        return () => {
+            if (textSelectionIntervalRef.current) {
+                clearInterval(textSelectionIntervalRef.current);
+            }
+            if (fastScrollTimeoutRef.current) {
+                clearTimeout(fastScrollTimeoutRef.current);
+            }
+            if (scrollSyncTimeoutRef.current) {
+                clearTimeout(scrollSyncTimeoutRef.current);
+            }
+            if (scrollMomentumTimeoutRef.current) {
+                clearTimeout(scrollMomentumTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    // ✅ নতুন: নেটিভ বাবল থেকে অ্যাপ ওপেন হলে UI দেখান
+    useEffect(() => {
+        if (isAppLoaded) {
+            // নোট লোড হয়ে গেলে UI দেখান
+            if (notes.length > 0 && !showNote) {
+                setActiveNoteId(notes[0].id);
+                setShowNote(true);
+                setIsViewingMode(true);
+                console.log('✅ Native bubble: Opening first note');
+            } else if (notes.length === 0) {
+                // নতুন নোট তৈরি করুন
+                const newNote = createNewNote(width - 100, 400);
+                setNotes([newNote]);
+                setActiveNoteId(newNote.id);
+                setShowNote(true);
+                console.log('✅ Native bubble: Creating new note');
+            }
+        }
+    }, [isAppLoaded, notes]);
+
+    // ✅ নতুন: অ্যাপ ফোরগ্রাউন্ডে আসলে চেক করুন (নেটিভ বাবল থেকে আসলে)
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active' && isAppLoaded) {
+                console.log('✅ App came to foreground from native bubble');
+                // নেটিভ বাবল থেকে আসলে UI দেখান
+                if (notes.length > 0 && !showNote) {
+                    setActiveNoteId(notes[0].id);
+                    setShowNote(true);
+                    setIsViewingMode(true);
+                }
+            }
+        });
+        return () => subscription.remove();
+    }, [notes, showNote, isAppLoaded]);
 
     // *** View Mode এ ট্যাপ করে Edit Mode এ যাওয়া ***
     const handlePressInViewMode = () => {
