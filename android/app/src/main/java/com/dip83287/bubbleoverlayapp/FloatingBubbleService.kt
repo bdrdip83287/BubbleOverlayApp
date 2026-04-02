@@ -25,8 +25,6 @@ class FloatingBubbleService : Service() {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "FloatingBubbleChannel"
         private var bubbleView: View? = null
-        private var closeButton: View? = null
-        private var isCloseButtonVisible = false
     }
 
     private lateinit var windowManager: WindowManager
@@ -76,27 +74,25 @@ class FloatingBubbleService : Service() {
         }
 
         if (bubbleView == null) {
-            createBubbleViewWithCloseButton()
+            createBubbleView()
         }
 
         return START_STICKY
     }
 
-    private fun createBubbleViewWithCloseButton() {
-        // Main container - React Native bubble-এর মতো
+    private fun createBubbleView() {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(12, 12, 12, 12)
+            setPadding(15, 15, 15, 15)
             
             val shape = GradientDrawable()
             shape.shape = GradientDrawable.OVAL
-            shape.setColor(0xFFF9E79F.toInt()) // React Native bubble color
+            shape.setColor(0xFFF9E79F.toInt())
             shape.setStroke(2, 0xFFF1C40F.toInt())
             background = shape
         }
 
-        // Icon (documents-outline)
         val icon = ImageView(this).apply {
             setImageResource(android.R.drawable.ic_menu_edit)
             setColorFilter(0xFF333333.toInt())
@@ -104,20 +100,7 @@ class FloatingBubbleService : Service() {
         }
         container.addView(icon)
 
-        // Close button (X) - React Native-এর close icon-এর মতো
-        val closeIcon = ImageView(this).apply {
-            setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-            setColorFilter(0xFFC0392B.toInt())
-            layoutParams = LinearLayout.LayoutParams(25, 25).apply {
-                topMargin = -10
-                gravity = Gravity.CENTER_HORIZONTAL
-            }
-            visibility = View.GONE // initially hidden
-        }
-        container.addView(closeIcon)
-
         bubbleView = container
-        closeButton = closeIcon
 
         val layoutParams = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams(
@@ -144,9 +127,7 @@ class FloatingBubbleService : Service() {
         var isDragging = false
         var startX = 0
         var startY = 0
-        var longPressTriggered = false
 
-        // Touch handler for bubble
         bubbleView?.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -155,7 +136,6 @@ class FloatingBubbleService : Service() {
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     isDragging = false
-                    longPressTriggered = false
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -163,11 +143,6 @@ class FloatingBubbleService : Service() {
                     val dy = event.rawY - initialTouchY
                     if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
                         isDragging = true
-                        // Hide close button when dragging
-                        if (isCloseButtonVisible) {
-                            closeButton?.visibility = View.GONE
-                            isCloseButtonVisible = false
-                        }
                     }
                     layoutParams.x = startX + dx.toInt()
                     layoutParams.y = startY + dy.toInt()
@@ -175,8 +150,7 @@ class FloatingBubbleService : Service() {
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!isDragging && !longPressTriggered) {
-                        // Click - open React Native UI
+                    if (!isDragging) {
                         val intent = Intent(this, MainActivity::class.java)
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         startActivity(intent)
@@ -187,32 +161,10 @@ class FloatingBubbleService : Service() {
             }
         }
 
-        // Long press to show close button (React Native-এর মতো)
         bubbleView?.setOnLongClickListener {
-            longPressTriggered = true
-            if (isCloseButtonVisible) {
-                // If close button already visible, close bubble
-                Toast.makeText(this, "Closing floating notes", Toast.LENGTH_SHORT).show()
-                stopSelf()
-            } else {
-                // Show close button
-                closeButton?.visibility = View.VISIBLE
-                isCloseButtonVisible = true
-                // Auto hide after 3 seconds
-                bubbleView?.postDelayed({
-                    if (isCloseButtonVisible) {
-                        closeButton?.visibility = View.GONE
-                        isCloseButtonVisible = false
-                    }
-                }, 3000)
-            }
-            true
-        }
-
-        // Close button click handler
-        closeButton?.setOnClickListener {
-            Toast.makeText(this, "Closing floating notes", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Close floating notes", Toast.LENGTH_SHORT).show()
             stopSelf()
+            true
         }
 
         windowManager.addView(bubbleView, layoutParams)
