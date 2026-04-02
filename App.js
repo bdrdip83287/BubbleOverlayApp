@@ -562,13 +562,10 @@ export default function App() {
     const [oldMasterPasswordInput, setOldMasterPasswordInput] = useState('');
     const [showNewMasterPassword, setShowNewMasterPassword] = useState(false);
     const [showOldMasterPassword, setShowOldMasterPassword] = useState(false);
-    // অ্যানিমেশন স্টেট
     const [isMinimizing, setIsMinimizing] = useState(false);
     const [isSettingsOpening, setIsSettingsOpening] = useState(false);
     const [isSettingsClosing, setIsSettingsClosing] = useState(false);
     const [isModalAnimating, setIsModalAnimating] = useState(false);
-
-    // *** সিকিউরিটি প্রশ্ন স্টেট ***
     const [isSecurityQuestionSetupModalVisible, setIsSecurityQuestionSetupModalVisible] = useState(false);
     const [isSecurityQuestionModalVisible, setIsSecurityQuestionModalVisible] = useState(false);
     const [securityQuestion, setSecurityQuestion] = useState({
@@ -580,37 +577,21 @@ export default function App() {
     const [showSecurityAnswer, setShowSecurityAnswer] = useState(false);
     const [isSecuritySetupComplete, setIsSecuritySetupComplete] = useState(false);
     const [encryptionKey, setEncryptionKey] = useState('');
-
-    // *** Forget Password Recovery State ***
     const [isRecoveryPasswordModalVisible, setIsRecoveryPasswordModalVisible] = useState(false);
     const [recoveryPasswordInput, setRecoveryPasswordInput] = useState('');
     const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
-
-    // *** নতুন স্টেট: ফুল স্ক্রিন মোড ***
     const [isFullScreen, setIsFullScreen] = useState(false);
-
-    // *** নতুন স্টেট: ডিলিট কনফার্মেশন ***
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const deleteConfirmAnim = useRef(new Animated.Value(0)).current;
-
-    // *** মূল স্টেট: পঠন মোড / সম্পাদনা মোড নিয়ন্ত্রণ ***
     const [isViewingMode, setIsViewingMode] = useState(true);
-
-    // *** সরলীকৃত কার্সার পজিশন কন্ট্রোল স্টেট ***
     const [selection, setSelection] = useState({ start: 0, end: 0 });
-
-    // *** উন্নত রেফারেন্স ***
     const lastCursorPosRef = useRef(0);
     const currentScrollYRef = useRef(0);
     const isFocusingRef = useRef(false);
     const scrollSyncTimeoutRef = useRef(null);
-
-    // *** স্ক্রলিং রেফারেন্স ***
     const scrollViewRef = useRef(null);
     const editScrollViewRef = useRef(null);
     const textInputRef = useRef(null);
-
-    // *** উন্নত Fast Scroll জন্য স্টেট এবং রেফ ***
     const [showFastScroll, setShowFastScroll] = useState(false);
     const fastScrollAnim = useRef(new Animated.Value(0)).current;
     const scrollIndicatorOpacity = useRef(new Animated.Value(0)).current;
@@ -619,20 +600,16 @@ export default function App() {
     const scrollViewContentHeightRef = useRef(0);
     const scrollViewVisibleHeightRef = useRef(0);
     const fastScrollIndicatorY = useRef(new Animated.Value(0)).current;
-
-    // *** উন্নত Rapid Text Selection জন্য রেফ ***
     const textSelectionIntervalRef = useRef(null);
     const selectionStartPosRef = useRef(0);
     const isSelectingText = useRef(false);
     const selectionDirectionRef = useRef(null);
     const isInTextSelectionMode = useRef(false);
     const lastSelectionYRef = useRef(0);
-
-    // *** নতুন স্টেট: স্ক্রলিং স্পীড কন্ট্রোল ***
-    const [scrollSpeed, setScrollSpeed] = useState(1.0); // 0.5x থেকে 3.0x
+    const [scrollSpeed, setScrollSpeed] = useState(1.0);
     const scrollMomentumTimeoutRef = useRef(null);
-
-    // ডিফল্ট সেটিংস - থিম অনুযায়ী পরিবর্তন হবে
+    
+    // ✅ এই লাইনটি যোগ করুন - এটাই missing ছিল
     const [settings, setSettings] = useState({
         childTextColor: DEFAULT_TEXT_COLOR,
         childTextSize: DEFAULT_TEXT_SIZE,
