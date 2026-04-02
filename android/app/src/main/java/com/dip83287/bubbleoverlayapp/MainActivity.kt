@@ -1,22 +1,15 @@
 package com.dip83287.bubbleoverlayapp
 
+import android.os.Build
+import android.os.Bundle
+import android.view.Gravity
+import android.view.WindowManager
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
-import android.os.Bundle
-import android.os.Build
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import android.widget.Toast
-import android.app.AlertDialog
 
 class MainActivity : ReactActivity() {
-
-    companion object {
-        const val OVERLAY_PERMISSION_REQUEST_CODE = 1234
-    }
 
     override fun getMainComponentName(): String = "BubbleOverlayApp"
 
@@ -26,39 +19,33 @@ class MainActivity : ReactActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Show a toast to confirm activity is loading
-        Toast.makeText(this, "Opening Floating Notes...", Toast.LENGTH_SHORT).show()
-        
-        // Check permission
-        checkOverlayPermission()
-    }
-
-    private fun checkOverlayPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(this)) {
-                AlertDialog.Builder(this)
-                    .setTitle("Permission Required")
-                    .setMessage("Please allow 'Display over other apps' permission to use floating bubble.")
-                    .setPositiveButton("Settings") { _, _ ->
-                        val intent = Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:$packageName")
-                        )
-                        startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
-                    }
-                    .setNegativeButton("Cancel", null)
-                    .show()
-            }
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == OVERLAY_PERMISSION_REQUEST_CODE) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (Settings.canDrawOverlays(this)) {
-                    Toast.makeText(this, "Permission granted! Restart app.", Toast.LENGTH_LONG).show()
+        // Make React Native UI floating on top of other apps
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            window.apply {
+                // Transparent background
+                setBackgroundDrawableResource(android.R.color.transparent)
+                
+                // Floating window parameters
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+                } else {
+                    setType(WindowManager.LayoutParams.TYPE_PHONE)
                 }
+                
+                // Window flags for floating behavior
+                addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
+                addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH)
+                addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+                
+                // Set window size and position
+                val params = attributes
+                params.gravity = Gravity.CENTER or Gravity.TOP
+                params.x = 100
+                params.y = 200
+                params.width = 600
+                params.height = WindowManager.LayoutParams.WRAP_CONTENT
+                attributes = params
             }
         }
     }

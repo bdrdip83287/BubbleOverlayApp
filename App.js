@@ -4203,6 +4203,16 @@ const styles = StyleSheet.create({
         fontSize: 10,
         color: '#666',
     },
+    container: { 
+        flex: 1, 
+        backgroundColor: "transparent", // ← transparent instead of white
+    },
+    note: {
+        position: "absolute",
+        backgroundColor: settings.mainBgColor, // this will be your note color
+        borderRadius: 12,
+        elevation: 10,
+    },
     sortButtonsContainer: {
         position: 'absolute',
         right: 25,
